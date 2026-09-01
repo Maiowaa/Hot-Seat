@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Lot House</title>
+<meta name="description" content="A Pokémon blind-auction party game for 2 players. Bid on mystery lots by colour alone, then bet on the battle when identities are revealed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Courier+Prime:wght@400;700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#173628;
+    --felt-dark:#0e241a;
+    --paper:#f1e7cf;
+    --paper-dark:#e3d3ab;
+    --ink:#20180f;
+    --brass:#c9a227;
+    --brass-light:#e8c85a;
+    --stamp:#a9342f;
+    --p1:#b33a3a;
+    --p1-dim:#7a2828;
+    --p2:#2b5f7a;
+    --p2-dim:#1d4256;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, rgba(255,255,255,0.05), transparent 60%),
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.03) 0 2px, transparent 2px 6px),
+      var(--felt);
+    color:var(--paper);
+    font-family:'Courier Prime', monospace;
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .wrap{width:100%;max-width:900px;}
+  h1,h2,h3{font-family:'Abril Fatface', serif; font-weight:400; margin:0;}
+  .eyebrow{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--brass-light); text-align:center; margin-bottom:6px;
+  }
+  .title{
+    text-align:center; font-size:42px; color:var(--paper);
+    text-shadow:0 2px 0 rgba(0,0,0,0.4);
+    letter-spacing:.02em;
+  }
+  .title span{color:var(--brass-light);}
+  .subtitle{
+    text-align:center; font-size:13px; color:var(--paper-dark); opacity:.75;
+    margin-top:6px; margin-bottom:26px; letter-spacing:.03em;
+  }
+  .divider{
+    height:1px; background:linear-gradient(90deg, transparent, var(--brass), transparent);
+    margin:22px 0;
+  }
+  /* ---- setup ---- */
+  .card{
+    background:var(--paper); color:var(--ink); border-radius:6px;
+    padding:26px; box-shadow:0 10px 30px rgba(0,0,0,0.35);
+    border:1px solid rgba(0,0,0,0.15);
+  }
+  .setup-row{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;}
+  .field{flex:1; min-width:200px;}
+  .field label{
+    display:block; font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+    color:var(--felt); opacity:.7; margin-bottom:6px;
+  }
+  .field input[type=text]{
+    width:100%; padding:12px 10px; font-family:'Courier Prime',monospace;
+    font-size:16px; border:2px solid var(--felt); border-radius:3px;
+    background:#fff; color:var(--ink);
+  }
+  .swatch-tag{display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; vertical-align:middle;}
+  .rules{font-size:12.5px; line-height:1.7; color:var(--felt); opacity:.85; margin-top:10px;}
+  button{
+    font-family:'Courier Prime',monospace; font-weight:700; cursor:pointer;
+    border:none; border-radius:3px; letter-spacing:.05em;
+  }
+  .btn-brass{
+    background:linear-gradient(180deg, var(--brass-light), var(--brass));
+    color:#2a2005; padding:13px 22px; font-size:14px; text-transform:uppercase;
+    box-shadow:0 3px 0 #8f7015, 0 6px 12px rgba(0,0,0,.3);
+    transition:transform .08s;
+  }
+  .btn-brass:hover{transform:translateY(-1px);}
+  .btn-brass:active{transform:translateY(2px); box-shadow:0 1px 0 #8f7015;}
+  .btn-brass:disabled{opacity:.35; cursor:not-allowed; transform:none;}
+  .btn-outline{
+    background:transparent; border:2px solid var(--paper-dark); color:var(--paper);
+    padding:11px 20px; font-size:13px; text-transform:uppercase;
+  }
+  .btn-outline:hover{border-color:var(--brass-light); color:var(--brass-light);}
+  .center{text-align:center;}
+
+  /* ---- scoreboard ---- */
+  .scoreboard{display:flex; gap:14px; margin-bottom:22px;}
+  .plate{
+    flex:1; background:var(--paper); border-radius:6px; padding:14px 16px;
+    box-shadow:0 6px 16px rgba(0,0,0,.3); position:relative; overflow:hidden;
+  }
+  .plate::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:6px;
+  }
+  .plate.p1::before{background:var(--p1);}
+  .plate.p2::before{background:var(--p2);}
+  .plate .name{font-family:'Abril Fatface',serif; font-size:19px; color:var(--ink); padding-left:8px;}
+  .plate .stat{font-size:12px; color:var(--ink); opacity:.75; padding-left:8px; margin-top:2px;}
+  .plate .stat b{opacity:1;}
+  .shelf{display:flex; gap:5px; padding-left:8px; margin-top:9px; flex-wrap:wrap;}
+  .shelf .mini{
+    width:26px; height:26px; border-radius:3px; position:relative;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);
+  }
+  .shelf .mini .tag{
+    position:absolute; bottom:-7px; left:50%; transform:translateX(-50%);
+    font-size:8px; background:var(--ink); color:var(--paper); padding:1px 3px; border-radius:2px;
+  }
+  .shelf .empty{
+    width:26px; height:26px; border-radius:3px; border:1.5px dashed rgba(0,0,0,.25);
+  }
+
+  /* ---- lot area ---- */
+  .round-label{text-align:center; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--brass-light); margin-bottom:10px;}
+  .lot-stage{display:flex; justify-content:center; margin-bottom:20px;}
+  .lot-card{
+    width:200px; height:250px; border-radius:10px; position:relative;
+    box-shadow:0 14px 34px rgba(0,0,0,.45), inset 0 0 0 6px rgba(255,255,255,0.08);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    transition:transform .3s;
+  }
+  .lot-card .lotnum{
+    position:absolute; top:10px; left:12px; font-size:11px; letter-spacing:.1em;
+    background:rgba(0,0,0,.35); padding:3px 8px; border-radius:10px; color:#fff;
+  }
+  .lot-card .legend-tag{
+    position:absolute; top:10px; right:12px; font-size:9.5px; letter-spacing:.1em;
+    background:var(--brass-light); color:#2a2005; padding:3px 8px; border-radius:10px;
+    font-weight:700; text-transform:uppercase; box-shadow:0 2px 6px rgba(0,0,0,.35);
+  }
+  .lot-card.legendary{
+    box-shadow:0 14px 34px rgba(0,0,0,.45), inset 0 0 0 6px rgba(255,255,255,0.08), 0 0 0 3px var(--brass-light), 0 0 24px rgba(232,200,90,0.55);
+  }
+  .lot-card .qmark{font-family:'Abril Fatface',serif; font-size:64px; color:rgba(255,255,255,0.55); text-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .lot-card .colorname{
+    font-family:'Abril Fatface',serif; font-size:22px; color:#fff; letter-spacing:.04em;
+    text-shadow:0 2px 6px rgba(0,0,0,.5); margin-top:6px; text-transform:uppercase;
+  }
+  .lot-card .hint{font-size:10.5px; color:rgba(255,255,255,0.75); letter-spacing:.12em; text-transform:uppercase; margin-top:4px;}
+
+  /* ---- bidding panel ---- */
+  .bid-panel{background:var(--paper); border-radius:8px; padding:20px; box-shadow:0 10px 26px rgba(0,0,0,.35); color:var(--ink);}
+  .bid-status{text-align:center; margin-bottom:16px;}
+  .current-bid{font-family:'Abril Fatface',serif; font-size:38px;}
+  .held-by{font-size:12px; letter-spacing:.1em; text-transform:uppercase; opacity:.7;}
+  .turn-banner{
+    text-align:center; padding:9px; border-radius:5px; font-size:13px;
+    letter-spacing:.1em; text-transform:uppercase; margin-bottom:16px; color:#fff;
+  }
+  .turn-banner.p1{background:var(--p1);}
+  .turn-banner.p2{background:var(--p2);}
+  .bid-controls{display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;}
+  .stepper{display:flex; align-items:center; gap:8px; background:#fff; border:2px solid var(--felt); border-radius:5px; padding:6px 10px;}
+  .stepper button{background:var(--felt); color:var(--paper); width:26px; height:26px; border-radius:4px; font-size:16px; line-height:1;}
+  .stepper .amt{font-size:20px; min-width:44px; text-align:center; font-weight:700;}
+  .no-budget-note{text-align:center; font-size:11.5px; color:var(--stamp); margin-top:10px; letter-spacing:.03em;}
+
+  /* ---- SOLD stamp ---- */
+  .sold-overlay{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,0,0,0); pointer-events:none; z-index:50;
+  }
+  .stamp{
+    font-family:'Permanent Marker', cursive; font-size:64px; color:var(--stamp);
+    border:6px solid var(--stamp); border-radius:10px; padding:6px 34px;
+    transform:scale(3) rotate(-18deg); opacity:0;
+    text-transform:uppercase;
+  }
+  .stamp.show{ animation: slam .55s ease-out forwards; }
+  @keyframes slam{
+    0%{transform:scale(3) rotate(-18deg); opacity:0;}
+    60%{transform:scale(0.92) rotate(-12deg); opacity:1;}
+    80%{transform:scale(1.05) rotate(-12deg);}
+    100%{transform:scale(1) rotate(-12deg); opacity:1;}
+  }
+
+  .log{margin-top:22px; font-size:11.5px; color:var(--paper-dark); opacity:.65; text-align:center; line-height:1.8; min-height:20px;}
+
+  /* ---- reveal ---- */
+  .vault-title{text-align:center; margin-bottom:6px;}
+  .reveal-cols{display:flex; gap:20px; margin-top:24px; flex-wrap:wrap;}
+  .reveal-col{flex:1; min-width:260px;}
+  .reveal-col h3{font-size:20px; margin-bottom:12px;}
+  .reveal-col.p1 h3{color:var(--p1);} .reveal-col.p2 h3{color:var(--p2);}
+  .flip-row{
+    display:flex; align-items:center; gap:12px; background:var(--paper); color:var(--ink);
+    border-radius:6px; padding:10px 12px; margin-bottom:8px; box-shadow:0 5px 14px rgba(0,0,0,.28);
+    opacity:0; transform:translateY(8px); animation:riseIn .5s forwards;
+  }
+  @keyframes riseIn{to{opacity:1; transform:translateY(0);}}
+  .flip-swatch{width:44px; height:44px; border-radius:5px; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);}
+  .flip-info{flex:1;}
+  .flip-info .pname{font-family:'Abril Fatface',serif; font-size:16px;}
+  .flip-types{display:flex; gap:5px; margin-top:3px;}
+  .type-pill{font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:#fff; padding:2px 7px; border-radius:9px; text-shadow:0 1px 2px rgba(0,0,0,.55);}
+  .flip-price{font-size:13px; font-weight:700; opacity:.75;}
+  .totals{display:flex; gap:14px; margin-top:22px;}
+  .totals .plate{text-align:center;}
+  .hidden{display:none !important;}
+
+  /* ---- betting ---- */
+  .bet-row{display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;}
+  .bet-card{flex:1; min-width:230px; background:var(--paper-dark); border-radius:6px; padding:14px;}
+  .bet-card .bname{font-family:'Abril Fatface',serif; font-size:16px; margin-bottom:2px;}
+  .bet-card .bnote{font-size:11px; opacity:.65; margin-bottom:10px;}
+  .pick-btns{display:flex; gap:8px; margin-bottom:10px;}
+  .pick-btn{
+    flex:1; padding:9px 6px; font-size:12px; border-radius:4px;
+    border:2px solid var(--felt); background:#fff; color:var(--felt);
+  }
+  .pick-btn.active{background:var(--felt); color:var(--paper);}
+  .wager-row{display:flex; align-items:center; gap:8px; font-size:12px;}
+  .wager-row input{
+    width:70px; padding:6px 8px; border:2px solid var(--felt); border-radius:4px;
+    font-family:'Courier Prime',monospace; font-size:14px;
+  }
+  #battleLog{background:var(--paper); color:var(--ink); min-height:40px;}
+  .duel-line{opacity:0; transform:translateY(6px); animation:riseIn .4s forwards;}
+  .duel-line b{color:var(--stamp);}
+  .verdict-text{font-family:'Abril Fatface',serif; font-size:26px; color:var(--brass-light); text-shadow:0 2px 6px rgba(0,0,0,.4);}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Est. for trainers who like to gamble</div>
+  <h1 class="title">The <span>Lot</span> House</h1>
+  <p class="subtitle">— a blind auction · lots are sold by color alone, identities open at the close —</p>
+
+  <!-- SETUP -->
+  <div id="setup" class="card">
+    <div class="setup-row">
+      <div class="field">
+        <label>Bidder One</label>
+        <input type="text" id="p1name" placeholder="e.g. Red" maxlength="14">
+      </div>
+      <div class="field">
+        <label>Bidder Two</label>
+        <input type="text" id="p2name" placeholder="e.g. Blue" maxlength="14">
+      </div>
+    </div>
+    <div class="rules">
+      <b>How it runs:</b> each bidder starts with a $20 ledger. Lots are drawn one at a time and shown only as a color — you're bidding on hue, not a name. Open bidding, whoever raises last wins the lot. Build a team of 5; when both rosters are full, the vault opens, you each get a separate $10 pool to bet on the battle simulator, and every lot is revealed at once.
+    </div>
+    <div class="center" style="margin-top:20px;">
+      <button class="btn-brass" onclick="startGame()">Open The House</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="hidden">
+    <div class="scoreboard">
+      <div class="plate p1">
+        <div class="name" id="p1label">—</div>
+        <div class="stat">Ledger: <b id="p1budget">$20</b> &nbsp;·&nbsp; Roster: <b id="p1count">0/5</b></div>
+        <div class="shelf" id="p1shelf"></div>
+      </div>
+      <div class="plate p2">
+        <div class="name" id="p2label">—</div>
+        <div class="stat">Ledger: <b id="p2budget">$20</b> &nbsp;·&nbsp; Roster: <b id="p2count">0/5</b></div>
+        <div class="shelf" id="p2shelf"></div>
+      </div>
+    </div>
+
+    <div class="round-label" id="roundLabel">LOT 1</div>
+    <div class="lot-stage">
+      <div class="lot-card" id="lotCard">
+        <div class="lotnum" id="lotNum">#1</div>
+        <div class="legend-tag hidden" id="legendTag">Rare</div>
+        <div class="qmark">?</div>
+        <div class="colorname" id="colorName">—</div>
+        <div class="hint">mystery lot</div>
+      </div>
+    </div>
+
+    <div class="bid-panel">
+      <div class="bid-status">
+        <div class="current-bid" id="currentBid">No bids yet</div>
+        <div class="held-by" id="heldBy"></div>
+      </div>
+      <div class="turn-banner" id="turnBanner">—</div>
+      <div class="bid-controls" id="bidControls">
+        <div class="stepper">
+          <button onclick="stepBid(-1)">−</button>
+          <div class="amt" id="stepAmt">1</div>
+          <button onclick="stepBid(1)">+</button>
+        </div>
+      </div>
+      <div class="bid-controls" style="margin-top:10px;">
+        <button class="btn-brass" id="placeBidBtn0" onclick="placeBidFor(0)">Bid — Player 1</button>
+        <button class="btn-brass" id="placeBidBtn1" onclick="placeBidFor(1)">Bid — Player 2</button>
+      </div>
+      <div class="bid-controls" style="margin-top:10px;">
+        <button class="btn-outline" id="passBtn" onclick="passTurn()" style="color:var(--ink); border-color:var(--ink);">Pass</button>
+      </div>
+      <div class="no-budget-note hidden" id="noBudgetNote"></div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <!-- REVEAL -->
+  <div id="reveal" class="hidden">
+    <h2 class="vault-title center">The Vault Opens</h2>
+    <p class="subtitle">every lot, unmasked</p>
+    <div class="reveal-cols">
+      <div class="reveal-col p1">
+        <h3 id="rev1name">—</h3>
+        <div id="rev1list"></div>
+      </div>
+      <div class="reveal-col p2">
+        <h3 id="rev2name">—</h3>
+        <div id="rev2list"></div>
+      </div>
+    </div>
+    <div class="totals">
+      <div class="plate p1"><div class="name" id="tot1name">—</div><div class="stat" id="tot1stat"></div></div>
+      <div class="plate p2"><div class="name" id="tot2name">—</div><div class="stat" id="tot2stat"></div></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="battlePrep" class="card">
+      <h3 class="center" style="margin-bottom:6px;">Place Your Bets</h3>
+      <p class="rules center">Before the battle simulator runs, each trainer calls the winner — and can back it with part of what's left in their ledger.</p>
+      <div class="bet-row" id="betRow"></div>
+      <div class="center" style="margin-top:18px;">
+        <button class="btn-brass" id="simulateBtn" onclick="runBattle()" disabled>Simulate Battle</button>
+      </div>
+    </div>
+
+    <div id="battleResults" class="hidden">
+      <h3 class="center" style="margin-top:22px;">The Showdown</h3>
+      <div class="card" id="battleLog" style="font-size:13px; line-height:1.9;"></div>
+      <div class="center" id="battleVerdict" style="margin-top:14px;"></div>
+      <div class="center" id="betVerdict" style="margin-top:6px; font-size:13px; opacity:.85;"></div>
+    </div>
+
+    <div class="center" style="margin-top:24px;">
+      <button class="btn-outline" onclick="location.reload()">Run It Back</button>
+    </div>
+  </div>
+</div>
+
+<div class="sold-overlay" id="soldOverlay"><div class="stamp" id="stamp">SOLD</div></div>
+
+<script src="../data/dex-entries.js"></script>
+<script>
+const POKEDEX = window.DEX_ENTRIES;
+
+// Used only for the small type badges on the reveal screen —
+// the mystery-lot swatches themselves use each species's real body color.
+const TYPE_BADGE_COLOR = {
+  normal:'#A8A878', fire:'#F08030', water:'#6890F0', electric:'#F8D030', grass:'#78C850',
+  ice:'#98D8D8', fighting:'#C03028', poison:'#A040A0', ground:'#E0C068', flying:'#A890F0',
+  psychic:'#F85888', bug:'#A8B820', rock:'#B8A038', ghost:'#705898', dragon:'#7038F8',
+  dark:'#705848', steel:'#B8B8D0', fairy:'#EE99AC'
+};
+
+// The "Rare" tag shown on a lot card is deliberately unreliable: it's a rumor,
+// not a fact. RARE_TAG_TRUE_RATE = chance a genuinely legendary lot gets tagged.
+// RARE_TAG_FALSE_RATE = chance an ordinary lot gets tagged as a bluff.
+// With roughly half the pool being legendary, these give ~30% odds that a
+// tagged lot is actually legendary once it's revealed.
+// Starting ledger each bidder gets for the draft auction.
+const STARTING_BUDGET = 20;
+// Separate pool each bidder gets purely for wagering on the battle
+// simulator — independent of whatever's left in their draft ledger.
+const BET_BUDGET = 10;
+
+const RARE_TAG_TRUE_RATE = 0.15;
+const RARE_TAG_FALSE_RATE = 0.35;
+
+function shuffledPool(){
+  const arr = POKEDEX.map(([name,types,color,colorName,legendary])=>({name, types, color, colorName, legendary: !!legendary}));
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function swatchStyle(lot){
+  return `background:${lot.color};`;
+}
+
+let state = null;
+
+function startGame(){
+  const n1 = document.getElementById('p1name').value.trim() || 'Bidder One';
+  const n2 = document.getElementById('p2name').value.trim() || 'Bidder Two';
+  state = {
+    players: [
+      {name:n1, budget:STARTING_BUDGET, betBudget:BET_BUDGET, team:[]},
+      {name:n2, budget:STARTING_BUDGET, betBudget:BET_BUDGET, team:[]}
+    ],
+    pool: shuffledPool(),
+    lotCounter: 0,
+    starter: 0,          // who nominates/acts first this round
+    acting: 0,            // whose turn right now
+    currentBid: 0,
+    currentBidder: null,
+    currentLot: null,
+    logLines: []
+  };
+  document.getElementById('p1label').textContent = n1;
+  document.getElementById('p2label').textContent = n2;
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  nextLot();
+}
+
+function pushLog(text){
+  state.logLines.unshift(text);
+  state.logLines = state.logLines.slice(0,4);
+  document.getElementById('log').innerHTML = state.logLines.join('<br>');
+}
+
+function nextLot(){
+  if(state.players[0].team.length>=5 && state.players[1].team.length>=5){
+    return finishGame();
+  }
+  // whichever player still needs picks; if pool runs low, recycle unused
+  if(state.pool.length===0){
+    state.pool = shuffledPool().filter(p => !state.players.some(pl => pl.team.some(t=>t.name===p.name)));
+  }
+  state.currentLot = state.pool.pop();
+  // The "Rare" tag is a rumor, not a fact: it's shown on some legendary lots
+  // and, more often, planted on ordinary ones as a bluff — so that seeing the
+  // tag only means a ~30% chance the lot is actually legendary.
+  const tagRoll = Math.random();
+  state.currentLot.tagShown = state.currentLot.legendary
+    ? tagRoll < RARE_TAG_TRUE_RATE
+    : tagRoll < RARE_TAG_FALSE_RATE;
+  state.lotCounter++;
+  state.currentBid = 0;
+  state.currentBidder = null;
+  state.noBidPassCount = 0;
+  state.acting = state.starter;
+  renderLot();
+  renderBidding();
+  renderScoreboard();
+  checkAutoPass();
+}
+
+// If it's the turn of a player whose roster is already full, they have
+// no valid move — auto-pass for them so the other player can keep drafting.
+function checkAutoPass(){
+  const actingPlayer = state.players[state.acting];
+  if(actingPlayer.team.length >= 5){
+    setTimeout(passTurn, 500);
+  }
+}
+
+function renderLot(){
+  document.getElementById('roundLabel').textContent = `LOT ${state.lotCounter}`;
+  document.getElementById('lotNum').textContent = `#${state.lotCounter}`;
+  const card = document.getElementById('lotCard');
+  card.setAttribute('style', swatchStyle(state.currentLot));
+  card.classList.toggle('legendary', !!state.currentLot.tagShown);
+  document.getElementById('legendTag').classList.toggle('hidden', !state.currentLot.tagShown);
+  document.getElementById('colorName').textContent = state.currentLot.colorName;
+}
+
+// A player must always keep at least $1 available for every pick they still
+// need after this one (5 total, minus what they already have, minus the one
+// they're bidding on now). This caps how much they can spend on the current lot.
+function maxAffordableBid(player){
+  const picksNeededAfterThis = Math.max(0, 4 - player.team.length);
+  return Math.max(0, player.budget - picksNeededAfterThis);
+}
+
+function minBidStep(){ return 1; }
+
+function stepBid(delta){
+  const el = document.getElementById('stepAmt');
+  let v = parseInt(el.textContent,10) + delta;
+  const floor = state.currentBid + 1;
+  if(v < floor) v = floor;
+  const actingPlayer = state.players[state.acting];
+  const cap = maxAffordableBid(actingPlayer);
+  if(v > cap) v = cap;
+  if(v < floor) v = floor; // in case cap < floor, leave as floor (button disabled anyway)
+  el.textContent = v;
+}
+
+function renderBidding(){
+  const cb = document.getElementById('currentBid');
+  const hb = document.getElementById('heldBy');
+  if(state.currentBidder===null){
+    cb.textContent = 'No bids yet';
+    hb.textContent = '';
+  } else {
+    cb.textContent = `$${state.currentBid}`;
+    hb.textContent = `held by ${state.players[state.currentBidder].name.toUpperCase()}`;
+  }
+
+  const actingIdx = state.acting;
+  const actingPlayer = state.players[actingIdx];
+  const banner = document.getElementById('turnBanner');
+  banner.className = 'turn-banner ' + (actingIdx===0?'p1':'p2');
+  banner.textContent = `${actingPlayer.name}'s move`;
+
+  const stepEl = document.getElementById('stepAmt');
+  const floor = state.currentBid + 1;
+  stepEl.textContent = Math.min(floor, Math.max(floor, floor));
+  if(parseInt(stepEl.textContent,10) < floor) stepEl.textContent = floor;
+  stepEl.textContent = Math.max(floor, parseInt(stepEl.textContent,10)||floor);
+  stepEl.textContent = floor;
+
+  const placeBtn0 = document.getElementById('placeBidBtn0');
+  const placeBtn1 = document.getElementById('placeBidBtn1');
+  const passBtn = document.getElementById('passBtn');
+  const note = document.getElementById('noBudgetNote');
+
+  const rosterFull = actingPlayer.team.length >= 5;
+  const cap = maxAffordableBid(actingPlayer);
+  const canBid = !rosterFull && cap >= floor;
+
+  placeBtn0.textContent = `Bid $${floor} — ${state.players[0].name}`;
+  placeBtn1.textContent = `Bid $${floor} — ${state.players[1].name}`;
+  // Only the player whose turn it is can ever click a live "Bid" button —
+  // the other player's button stays disabled until the turn passes to them.
+  placeBtn0.disabled = !(actingIdx===0 && canBid);
+  placeBtn1.disabled = !(actingIdx===1 && canBid);
+  passBtn.disabled = rosterFull; // auto-pass will fire for them instead
+
+  if(rosterFull){
+    note.classList.remove('hidden');
+    note.textContent = `${actingPlayer.name}'s roster is full — passing automatically.`;
+  } else if(!canBid && actingPlayer.budget < floor){
+    note.classList.remove('hidden');
+    note.textContent = `${actingPlayer.name} can't cover another dollar — must pass.`;
+  } else if(!canBid){
+    note.classList.remove('hidden');
+    note.textContent = `${actingPlayer.name} can bid at most $${cap} — the rest is reserved for the remaining picks.`;
+  } else {
+    note.classList.add('hidden');
+  }
+}
+
+function placeBidFor(playerIdx){
+  // Safety check: a bid only counts if it's actually that player's turn —
+  // their button is disabled otherwise, but guard here too.
+  if(playerIdx !== state.acting) return;
+  const actingIdx = state.acting;
+  const actingPlayer = state.players[actingIdx];
+  if(actingPlayer.team.length >= 5) return; // roster full, no valid bid
+  const amt = parseInt(document.getElementById('stepAmt').textContent,10);
+  if(amt <= state.currentBid || amt > maxAffordableBid(actingPlayer)) return;
+  state.currentBid = amt;
+  state.currentBidder = actingIdx;
+  state.acting = 1 - actingIdx;
+  pushLog(`${actingPlayer.name} bids $${amt} on Lot ${state.lotCounter}.`);
+  renderBidding();
+  checkAutoPass();
+}
+
+function passTurn(){
+  const actingIdx = state.acting;
+  const actingPlayer = state.players[actingIdx];
+  if(state.currentBidder===null){
+    // Nobody has bid yet. A single pass shouldn't kill the lot — it just
+    // hands the other player a chance to open the bidding themselves.
+    state.noBidPassCount = (state.noBidPassCount||0) + 1;
+    if(state.noBidPassCount < 2){
+      pushLog(`${actingPlayer.name} passes on Lot ${state.lotCounter} — ${state.players[1-actingIdx].name} gets first crack at it.`);
+      state.acting = 1 - actingIdx;
+      renderBidding();
+      checkAutoPass();
+      return;
+    }
+    // Both players passed with no bid on the table — lot truly goes unsold.
+    pushLog(`Both pass — Lot ${state.lotCounter} goes unsold.`);
+    state.starter = 1 - state.starter;
+    nextLot();
+    return;
+  }
+  // resolve sale
+  const winnerIdx = state.currentBidder;
+  const winner = state.players[winnerIdx];
+  const price = state.currentBid;
+  winner.budget -= price;
+  winner.team.push({name: state.currentLot.name, types: state.currentLot.types, color: state.currentLot.color, colorName: state.currentLot.colorName, legendary: state.currentLot.legendary, tagShown: state.currentLot.tagShown, price});
+  pushLog(`${actingPlayer.name} passes. ${winner.name} takes Lot ${state.lotCounter} for $${price}.`);
+  slamStamp();
+  state.starter = 1 - state.starter;
+  renderScoreboard();
+  setTimeout(()=>{ nextLot(); }, 650);
+}
+
+function slamStamp(){
+  const overlay = document.getElementById('soldOverlay');
+  const stamp = document.getElementById('stamp');
+  stamp.classList.remove('show');
+  void stamp.offsetWidth;
+  stamp.classList.add('show');
+  setTimeout(()=>{ stamp.classList.remove('show'); }, 700);
+}
+
+function renderScoreboard(){
+  [0,1].forEach(i=>{
+    const p = state.players[i];
+    const pre = 'p'+(i+1);
+    document.getElementById(pre+'budget').textContent = `$${p.budget}`;
+    document.getElementById(pre+'count').textContent = `${p.team.length}/5`;
+    const shelf = document.getElementById(pre+'shelf');
+    shelf.innerHTML = '';
+    p.team.forEach(t=>{
+      const d = document.createElement('div');
+      d.className = 'mini';
+      d.setAttribute('style', swatchStyle(t));
+      d.title = t.colorName; // true rarity stays secret until the vault opens
+      const tag = document.createElement('div');
+      tag.className='tag'; tag.textContent = '$'+t.price;
+      d.appendChild(tag);
+      shelf.appendChild(d);
+    });
+    for(let k=p.team.length;k<5;k++){
+      const d = document.createElement('div');
+      d.className='empty';
+      shelf.appendChild(d);
+    }
+  });
+}
+
+function typePill(t){
+  return `<span class="type-pill" style="background:${TYPE_BADGE_COLOR[t]}">${t}</span>`;
+}
+
+function finishGame(){
+  document.getElementById('game').classList.add('hidden');
+  const reveal = document.getElementById('reveal');
+  reveal.classList.remove('hidden');
+  [0,1].forEach(i=>{
+    const p = state.players[i];
+    document.getElementById(`rev${i+1}name`).textContent = p.name;
+    const list = document.getElementById(`rev${i+1}list`);
+    list.innerHTML='';
+    p.team.forEach((t,idx)=>{
+      const row = document.createElement('div');
+      row.className='flip-row';
+      row.style.animationDelay = (idx*0.18 + i*0.09)+'s';
+      row.innerHTML = `
+        <div class="flip-swatch" style="${swatchStyle(t)}"></div>
+        <div class="flip-info">
+          <div class="pname">${t.name}</div>
+          <div class="flip-types"><span class="type-pill" style="background:${t.color};">${t.colorName}</span>${t.types.map(typePill).join('')}${t.tagShown ? `<span class="type-pill" style="background:${t.legendary ? '#2f8f4e' : '#a9342f'};">${t.legendary ? 'Rare — confirmed' : 'Rare — bluff'}</span>` : ''}</div>
+        </div>
+        <div class="flip-price">$${t.price}</div>
+      `;
+      list.appendChild(row);
+    });
+    document.getElementById(`tot${i+1}name`).textContent = p.name;
+    document.getElementById(`tot${i+1}stat`).textContent = `Spent $${STARTING_BUDGET-p.budget} of $${STARTING_BUDGET} · $${p.budget} left in the ledger`;
+  });
+  setupBetting();
+}
+
+// ---------------- Battle betting + simulator ----------------
+
+function setupBetting(){
+  state.bets = [
+    {prediction: null, wager: 0},
+    {prediction: null, wager: 0}
+  ];
+  const row = document.getElementById('betRow');
+  row.innerHTML = '';
+  [0,1].forEach(i=>{
+    const p = state.players[i];
+    const other = state.players[1-i];
+    const card = document.createElement('div');
+    card.className = 'bet-card';
+    card.innerHTML = `
+      <div class="bname">${p.name}'s Bet</div>
+      <div class="bnote">$${p.betBudget} bet pool available (separate from your draft ledger)</div>
+      <div class="pick-btns">
+        <button class="pick-btn" id="pick-${i}-${i}" onclick="pickWinner(${i},${i})">Team ${p.name}</button>
+        <button class="pick-btn" id="pick-${i}-${1-i}" onclick="pickWinner(${i},${1-i})">Team ${other.name}</button>
+      </div>
+      <div class="wager-row">
+        <span>Wager $</span>
+        <input type="number" id="wager-${i}" min="0" max="${p.betBudget}" value="0" onchange="setWager(${i}, this.value)">
+        <span>/ $${p.betBudget}</span>
+      </div>
+    `;
+    row.appendChild(card);
+  });
+}
+
+function pickWinner(playerIdx, teamIdx){
+  state.bets[playerIdx].prediction = teamIdx;
+  [0,1].forEach(t=>{
+    document.getElementById(`pick-${playerIdx}-${t}`).classList.toggle('active', t===teamIdx);
+  });
+  checkBetsReady();
+}
+
+function setWager(playerIdx, val){
+  const p = state.players[playerIdx];
+  let amt = parseInt(val,10);
+  if(isNaN(amt) || amt < 0) amt = 0;
+  if(amt > p.betBudget) amt = p.betBudget;
+  state.bets[playerIdx].wager = amt;
+  document.getElementById(`wager-${playerIdx}`).value = amt;
+}
+
+function checkBetsReady(){
+  const ready = state.bets[0].prediction !== null && state.bets[1].prediction !== null;
+  document.getElementById('simulateBtn').disabled = !ready;
+}
+
+function powerScore(pokemon){
+  const base = 40 + Math.random()*40; // 40-80
+  const legendaryBonus = pokemon.legendary ? 25 : 0;
+  return base + legendaryBonus + Math.random()*10;
+}
+
+// Rates a team as a whole (not pick-by-pick): raw power, legendary weight,
+// and type coverage all factor into one composite score.
+function computeTeamComp(team){
+  let totalPower = 0;
+  let legendaryCount = 0;
+  const typesSeen = new Set();
+  team.forEach(mon=>{
+    totalPower += powerScore(mon);
+    if(mon.legendary) legendaryCount++;
+    mon.types.forEach(t=>typesSeen.add(t));
+  });
+  const typeCoverage = typesSeen.size;
+  const avgPower = totalPower / team.length;
+  const composite = totalPower + legendaryCount*12 + typeCoverage*4;
+  return {totalPower, avgPower, legendaryCount, typeCoverage, composite};
+}
+
+function runBattle(){
+  document.getElementById('simulateBtn').disabled = true;
+  document.querySelectorAll('#betRow .pick-btn, #betRow input').forEach(el => el.disabled = true);
+
+  const teamA = state.players[0].team;
+  const teamB = state.players[1].team;
+  const nameA = state.players[0].name;
+  const nameB = state.players[1].name;
+  const log = document.getElementById('battleLog');
+  log.innerHTML = '';
+  document.getElementById('battleResults').classList.remove('hidden');
+  document.getElementById('battleVerdict').innerHTML = '';
+  document.getElementById('betVerdict').innerHTML = '';
+
+  const compA = computeTeamComp(teamA);
+  const compB = computeTeamComp(teamB);
+
+  const rows = [
+    {label:'Average Power', a: compA.avgPower.toFixed(1), b: compB.avgPower.toFixed(1), edge: compA.avgPower>=compB.avgPower?0:1},
+    {label:'Legendaries on Roster', a: compA.legendaryCount, b: compB.legendaryCount, edge: compA.legendaryCount>=compB.legendaryCount?0:1},
+    {label:'Type Coverage', a: compA.typeCoverage, b: compB.typeCoverage, edge: compA.typeCoverage>=compB.typeCoverage?0:1},
+    {label:'Overall Comp Score', a: compA.composite.toFixed(0), b: compB.composite.toFixed(0), edge: compA.composite>=compB.composite?0:1}
+  ];
+
+  rows.forEach((r, idx)=>{
+    setTimeout(()=>{
+      const line = document.createElement('div');
+      line.className = 'duel-line';
+      const edgeName = r.edge===0 ? nameA : nameB;
+      line.innerHTML = `${r.label}: <b>${nameA} ${r.a}</b> vs <b>${nameB} ${r.b}</b> — edge ${edgeName}.`;
+      log.appendChild(line);
+    }, idx*550);
+  });
+
+  setTimeout(()=>{
+    const winnerIdx = compA.composite >= compB.composite ? 0 : 1;
+    const winner = state.players[winnerIdx];
+    const winnerScore = winnerIdx===0 ? compA.composite : compB.composite;
+    const otherScore = winnerIdx===0 ? compB.composite : compA.composite;
+    const verdict = document.getElementById('battleVerdict');
+    verdict.innerHTML = `<div class="verdict-text">Team ${winner.name} has the better comp — ${winnerScore.toFixed(0)} to ${otherScore.toFixed(0)}!</div>`;
+    resolveBets(winnerIdx);
+  }, rows.length*550 + 400);
+}
+
+function resolveBets(winnerIdx){
+  const correct = state.bets.map(b => b.prediction === winnerIdx);
+  const betVerdict = document.getElementById('betVerdict');
+  let lines = [];
+
+  state.players.forEach((p,i)=>{
+    const calledTeam = state.players[state.bets[i].prediction].name;
+    lines.push(`${p.name} called Team ${calledTeam}${state.bets[i].wager>0 ? ` for $${state.bets[i].wager}`:''} — ${correct[i] ? 'correct!' : 'wrong.'}`);
+  });
+
+  if(correct[0] !== correct[1]){
+    const winI = correct[0] ? 0 : 1;
+    const loseI = 1 - winI;
+    const stake = state.bets[loseI].wager;
+    if(stake > 0){
+      state.players[winI].betBudget += stake;
+      state.players[loseI].betBudget -= stake;
+      lines.push(`${state.players[winI].name} collects $${stake} off ${state.players[loseI].name}'s bad call.`);
+    } else {
+      lines.push(`${state.players[winI].name} called it right — no wager on the table though.`);
+    }
+  } else if(correct[0] && correct[1]){
+    lines.push(`Both trainers called it — no money changes hands.`);
+  } else {
+    lines.push(`Both trainers called it wrong — the house keeps quiet on this one.`);
+  }
+
+  lines.push(`Bet pool remaining — ${state.players[0].name}: $${state.players[0].betBudget} · ${state.players[1].name}: $${state.players[1].betBudget}`);
+
+  betVerdict.innerHTML = lines.join('<br>');
+}
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>

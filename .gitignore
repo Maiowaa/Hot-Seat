@@ -1,0 +1,11 @@
+# pre-restructure copies of the original single-file games — kept locally,
+# not part of the published site
+_originals/
+
+# local editor / tooling config
+.claude/
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

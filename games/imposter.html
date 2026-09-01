@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imposter</title>
+<meta name="description" content="A Pokémon hidden-imposter party game for 3–10 players on one screen. Everyone gets the same species except one — same type, same generation.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=VT323&display=swap');
+
+  :root{
+    --void:    #14131A;
+    --panel:   #1F1D28;
+    --panel-2: #2A2734;
+    --paper:   #F2EFE9;
+    --muted:   #9A94AA;
+    --line:    rgba(242,239,233,0.14);
+    --amber:   #E0A030;
+    --crew:    #4FA88B;
+    --danger:  #C2453B;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--void);
+    background-image: radial-gradient(ellipse at 50% -10%, rgba(224,160,48,0.10), transparent 55%);
+    color: var(--paper);
+    font-family:'Inter',system-ui,sans-serif;
+    padding: 20px 14px 44px;
+    min-height:100vh;
+  }
+  .wrap{ max-width: 540px; margin:0 auto; }
+
+  .masthead{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:18px; padding-bottom:10px; border-bottom:2px solid var(--paper);
+  }
+  .masthead h1{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    margin:0; letter-spacing:-0.02em;
+  }
+  .masthead .tag{ font-size:12.5px; color:var(--muted); }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:20px 18px;
+  }
+  .panel h2{ font-family:'Space Grotesk',sans-serif; font-size:17px; margin:0 0 5px; }
+  .panel .hint{ font-size:13px; color:var(--muted); margin:0 0 16px; line-height:1.55; }
+
+  .seclabel{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--muted); margin:0 0 8px;
+  }
+
+  .countrow{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:20px; }
+  .countbtn{
+    flex:1; min-width:44px; padding:12px 0; border-radius:9px; cursor:pointer;
+    border:1.5px solid var(--line); background:var(--panel-2); color:var(--paper);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px;
+    transition:all .13s ease;
+  }
+  .countbtn:hover{ border-color:var(--paper); }
+  .countbtn.on{ background:var(--paper); color:var(--void); border-color:var(--paper); }
+
+  .modes{ display:flex; flex-direction:column; gap:9px; margin-bottom:20px; }
+  .mode{
+    text-align:left; cursor:pointer; padding:13px 14px; border-radius:11px;
+    border:1.5px solid var(--line); background:var(--panel-2); color:var(--paper);
+    font-family:'Inter',sans-serif; transition:all .13s ease;
+  }
+  .mode:hover{ border-color:var(--muted); }
+  .mode.on{ border-color:var(--amber); background:rgba(224,160,48,0.10); }
+  .mode .mt{ font-weight:700; font-size:14.5px; font-family:'Space Grotesk',sans-serif; }
+  .mode .md{ font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+
+  .namegrid{ display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+  .namegrid input{
+    width:100%; padding:9px 11px; font-size:14px; border-radius:8px;
+    border:1.5px solid var(--line); background:var(--panel-2); color:var(--paper);
+    font-family:'Inter',sans-serif;
+  }
+  .namegrid input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+
+  button.primary{
+    width:100%; padding:14px; border:none; border-radius:11px;
+    background:var(--paper); color:var(--void);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    cursor:pointer;
+  }
+  button.primary:hover{ background:#fff; }
+  button.primary:disabled{ opacity:.4; cursor:default; }
+
+  button.amber{
+    width:100%; padding:14px; border:none; border-radius:11px;
+    background:var(--amber); color:#2A1D05;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    cursor:pointer;
+  }
+  button.amber:hover{ filter:brightness(1.08); }
+
+  button.outline{
+    width:100%; padding:12px; border-radius:11px; cursor:pointer;
+    border:1.5px solid var(--line); background:transparent; color:var(--paper);
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    margin-top:9px;
+  }
+  button.outline:hover{ border-color:var(--paper); }
+
+  .ghost{
+    display:block; width:100%; margin-top:12px; padding:8px; background:none;
+    border:none; cursor:pointer; color:var(--muted);
+    font-family:'Inter',sans-serif; font-size:12.5px; text-decoration:underline;
+  }
+  .ghost:hover{ color:var(--paper); }
+
+  /* ---------- pass / card ---------- */
+
+  .passwrap{ text-align:center; padding:14px 0 4px; }
+  .progress{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--muted); margin-bottom:22px;
+  }
+  .passto{
+    font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:30px; margin-bottom:8px; letter-spacing:-0.02em;
+  }
+  .passnote{ font-size:13.5px; color:var(--muted); margin-bottom:26px; line-height:1.55; }
+
+  .card{
+    border-radius:16px; padding:30px 20px; margin-bottom:20px;
+    background:linear-gradient(160deg, var(--panel-2), var(--panel));
+    border:1.5px solid var(--line); min-height:190px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px;
+  }
+  .card .kicker{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.11em; color:var(--muted);
+  }
+  .card .species{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:32px;
+    letter-spacing:-0.02em; line-height:1.15; text-align:center;
+  }
+  .card .types{ display:flex; gap:6px; margin-top:4px; }
+  .badge{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.06em;
+    padding:4px 9px; border-radius:100px; background:rgba(242,239,233,0.10);
+    border:1px solid var(--line); color:var(--paper);
+  }
+  .card.imposter{ border-color:var(--danger); background:linear-gradient(160deg,#3A1F1F,#241618); }
+  .card.imposter .species{ color:#F0A29B; font-size:27px; }
+  .card .warn{ font-size:13px; color:var(--muted); text-align:center; line-height:1.55; max-width:30ch; }
+
+  /* ---------- discussion / accuse ---------- */
+
+  .steps{ margin:0 0 18px; padding-left:18px; font-size:13.5px; color:var(--muted); line-height:1.75; }
+  .steps b{ color:var(--paper); font-weight:600; }
+
+  .order{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:20px; }
+  .ochip{
+    font-size:12.5px; padding:6px 11px; border-radius:100px;
+    background:var(--panel-2); border:1px solid var(--line);
+  }
+  .ochip .n{ color:var(--amber); font-weight:700; margin-right:5px; }
+
+  .votegrid{ display:flex; flex-direction:column; gap:8px; margin-bottom:18px; }
+  .vote{
+    padding:13px 15px; border-radius:10px; cursor:pointer; text-align:left;
+    border:1.5px solid var(--line); background:var(--panel-2); color:var(--paper);
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px;
+    transition:all .13s ease;
+  }
+  .vote:hover{ border-color:var(--paper); }
+  .vote.on{ border-color:var(--amber); background:rgba(224,160,48,0.12); }
+
+  /* ---------- result ---------- */
+
+  .verdict{
+    text-align:center; font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:24px; margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .verdict.crew{ color:var(--crew); }
+  .verdict.imp{ color:var(--danger); }
+  .verdict-sub{ text-align:center; font-size:13.5px; color:var(--muted); margin-bottom:22px; line-height:1.55; }
+
+  .rrow{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    padding:11px 0; border-top:1px solid var(--line); font-size:14px;
+  }
+  .rrow:first-of-type{ border-top:none; }
+  .rrow .who{ font-weight:600; }
+  .rrow .what{ color:var(--muted); font-size:13.5px; text-align:right; }
+  .rrow.isimp .who{ color:var(--danger); }
+  .rrow.isimp .what{ color:#F0A29B; }
+
+  .tally{
+    display:flex; gap:12px; margin-bottom:18px;
+  }
+  .tallybox{
+    flex:1; text-align:center; padding:11px 8px; border-radius:10px;
+    background:var(--panel-2); border:1px solid var(--line);
+  }
+  .tallybox .n{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; }
+  .tallybox .l{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); margin-top:2px; }
+  .tallybox.crew .n{ color:var(--crew); }
+  .tallybox.imp .n{ color:var(--danger); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Imposter</h1>
+    <div class="tag">one of you has the wrong species</div>
+  </div>
+
+  <!-- ================= SETUP ================= -->
+  <div id="setup">
+    <div class="panel">
+      <h2>How many players?</h2>
+      <p class="hint">One device, passed around. Everyone sees their own card in private.</p>
+
+      <div class="countrow" id="countRow"></div>
+
+      <p class="seclabel">Mode</p>
+      <div class="modes" id="modeRow">
+        <button class="mode" data-mode="dark">
+          <div class="mt">In the dark</div>
+          <div class="md">Nobody is told anything. The imposter gets a different species of the same type and generation — and has no idea they're the odd one out.</div>
+        </button>
+        <button class="mode" data-mode="told">
+          <div class="mt">Told</div>
+          <div class="md">The imposter knows. They never see the species and have to bluff their way through on what everyone else says.</div>
+        </button>
+      </div>
+
+      <p class="seclabel">Which species can come up?</p>
+      <div class="countrow" id="poolRow"></div>
+
+      <p class="seclabel">Names</p>
+      <div class="namegrid" id="nameGrid"></div>
+
+      <button class="primary" id="startBtn">Deal cards</button>
+    </div>
+  </div>
+
+  <!-- ================= PASS ================= -->
+  <div id="pass" style="display:none;">
+    <div class="panel">
+      <div class="passwrap">
+        <div class="progress" id="passProgress"></div>
+        <div class="passto" id="passName"></div>
+        <div class="passnote">Everyone else: look away.</div>
+        <button class="amber" id="showBtn">Show my card</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CARD ================= -->
+  <div id="cardview" style="display:none;">
+    <div class="panel">
+      <div class="progress" id="cardProgress" style="text-align:center;"></div>
+      <div class="card" id="theCard"></div>
+      <button class="primary" id="hideBtn">Hide &amp; pass on</button>
+    </div>
+  </div>
+
+  <!-- ================= DISCUSS ================= -->
+  <div id="discuss" style="display:none;">
+    <div class="panel">
+      <h2>Everyone has seen their card</h2>
+      <ol class="steps">
+        <li>Go round in order. Say <b>one word</b> about your species — no names, no dex numbers.</li>
+        <li>Two laps, then argue about it.</li>
+        <li>When you've settled on a suspect, accuse.</li>
+      </ol>
+      <p class="seclabel">Speaking order</p>
+      <div class="order" id="orderRow"></div>
+      <button class="primary" id="toAccuseBtn">We're ready to accuse</button>
+    </div>
+  </div>
+
+  <!-- ================= ACCUSE ================= -->
+  <div id="accuse" style="display:none;">
+    <div class="panel">
+      <h2>Who's the imposter?</h2>
+      <p class="hint">Pick together. One tap, no takebacks.</p>
+      <div class="votegrid" id="voteGrid"></div>
+      <button class="primary" id="lockVoteBtn" disabled>Lock it in</button>
+    </div>
+  </div>
+
+  <!-- ================= RESULT ================= -->
+  <div id="result" style="display:none;">
+    <div class="panel">
+      <div class="verdict" id="verdict"></div>
+      <div class="verdict-sub" id="verdictSub"></div>
+
+      <div class="tally">
+        <div class="tallybox crew"><div class="n" id="crewWins">0</div><div class="l">Crew</div></div>
+        <div class="tallybox imp"><div class="n" id="impWins">0</div><div class="l">Imposter</div></div>
+      </div>
+
+      <div id="resultRows"></div>
+
+      <button class="amber" id="againBtn" style="margin-top:18px;">Next round</button>
+      <button class="outline" id="backSetupBtn">Change players / mode</button>
+    </div>
+  </div>
+
+  <button class="ghost" id="quitBtn" style="display:none;">Restart from setup</button>
+
+</div>
+
+<script src="../data/dex-entries.js"></script>
+<script>
+const DEX = window.DEX_ENTRIES;
+
+const GENERATIONS = [
+  {gen:1, region:"Kanto",       lo:1,   hi:151},
+  {gen:2, region:"Johto",       lo:152, hi:251},
+  {gen:3, region:"Hoenn",       lo:252, hi:386},
+  {gen:4, region:"Sinnoh",      lo:387, hi:493},
+  {gen:5, region:"Unova",       lo:494, hi:649},
+  {gen:6, region:"Kalos",       lo:650, hi:721},
+  {gen:7, region:"Alola",       lo:722, hi:809},
+  {gen:8, region:"Galar/Hisui", lo:810, hi:905},
+  {gen:9, region:"Paldea",      lo:906, hi:1025},
+];
+
+const POOLS = [
+  {key:'kanto', label:'Kanto',   hi:151,  note:'Gen 1 only'},
+  {key:'early', label:'Gen 1–3', hi:386,  note:'through Hoenn'},
+  {key:'all',   label:'All',     hi:1025, note:'through Paldea'},
+];
+
+const MIN_PLAYERS = 3;
+const MAX_PLAYERS = 10;
+
+let state = {
+  count: 4,
+  mode: 'dark',           // 'dark' | 'told'
+  pool: 'early',
+  names: [],
+  players: [],            // {name, isImposter, species}
+  crewSpecies: null,
+  impSpecies: null,
+  turn: 0,
+  accused: null,
+  crewWins: 0,
+  impWins: 0,
+};
+
+for(let i = 0; i < MAX_PLAYERS; i++) state.names[i] = 'Player ' + (i + 1);
+
+/* ---------------------------- helpers ---------------------------- */
+
+function genOf(num){
+  return GENERATIONS.find(g => num >= g.lo && num <= g.hi);
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function show(id){
+  ['setup','pass','cardview','discuss','accuse','result'].forEach(s => {
+    document.getElementById(s).style.display = (s === id ? 'block' : 'none');
+  });
+  document.getElementById('quitBtn').style.display = (id === 'setup' ? 'none' : 'block');
+  window.scrollTo(0, 0);
+}
+
+/* Buckets of species sharing BOTH generation and exact type combination —
+   that pairing is what makes the imposter genuinely hard to spot. */
+function buildBuckets(maxDex){
+  const buckets = {};
+  const limit = Math.min(maxDex, DEX.length);
+  for(let i = 0; i < limit; i++){
+    const row = DEX[i];
+    const num = i + 1;
+    const g = genOf(num);
+    if(!g) continue;
+    const types = row[1];
+    const key = g.gen + '|' + types.slice().sort().join('/');
+    (buckets[key] = buckets[key] || []).push({
+      name: row[0], num, types, gen: g.gen, region: g.region,
+    });
+  }
+  return Object.keys(buckets).map(k => buckets[k]).filter(b => b.length >= 2);
+}
+
+/* Weighted by bucket size, so common type/gen combos come up more often
+   than obscure two-member ones. */
+function pickPair(maxDex){
+  const buckets = buildBuckets(maxDex);
+  const total = buckets.reduce((s, b) => s + b.length, 0);
+  let roll = Math.random() * total;
+  let bucket = buckets[0];
+  for(const b of buckets){
+    roll -= b.length;
+    if(roll <= 0){ bucket = b; break; }
+  }
+  const a = Math.floor(Math.random() * bucket.length);
+  let b = Math.floor(Math.random() * (bucket.length - 1));
+  if(b >= a) b++;
+  return [bucket[a], bucket[b]];
+}
+
+/* ---------------------------- setup ---------------------------- */
+
+function renderSetup(){
+  const row = document.getElementById('countRow');
+  row.innerHTML = '';
+  for(let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++){
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (n === state.count ? ' on' : '');
+    b.textContent = n;
+    b.addEventListener('click', () => { captureNames(); state.count = n; renderSetup(); });
+    row.appendChild(b);
+  }
+
+  document.querySelectorAll('#modeRow .mode').forEach(el => {
+    el.classList.toggle('on', el.getAttribute('data-mode') === state.mode);
+    el.onclick = () => { captureNames(); state.mode = el.getAttribute('data-mode'); renderSetup(); };
+  });
+
+  const pr = document.getElementById('poolRow');
+  pr.innerHTML = '';
+  POOLS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (p.key === state.pool ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(p.label) + '<div style="font-size:10px;font-weight:400;opacity:.6;margin-top:2px;">' + esc(p.note) + '</div>';
+    b.addEventListener('click', () => { captureNames(); state.pool = p.key; renderSetup(); });
+    pr.appendChild(b);
+  });
+
+  const grid = document.getElementById('nameGrid');
+  grid.innerHTML = '';
+  for(let i = 0; i < state.count; i++){
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.maxLength = 14;
+    inp.value = state.names[i];
+    grid.appendChild(inp);
+  }
+}
+
+function captureNames(){
+  document.querySelectorAll('#nameGrid input').forEach((inp, i) => {
+    state.names[i] = inp.value.trim() || ('Player ' + (i + 1));
+  });
+}
+
+function poolMax(){
+  return (POOLS.find(p => p.key === state.pool) || POOLS[2]).hi;
+}
+
+function deal(){
+  const [crew, imp] = pickPair(poolMax());
+  state.crewSpecies = crew;
+  state.impSpecies  = imp;
+
+  const impIndex = Math.floor(Math.random() * state.count);
+  state.players = [];
+  for(let i = 0; i < state.count; i++){
+    state.players.push({
+      name: state.names[i],
+      isImposter: i === impIndex,
+      species: i === impIndex ? imp : crew,
+    });
+  }
+  state.turn = 0;
+  state.accused = null;
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  captureNames();
+  deal();
+  renderPass();
+  show('pass');
+});
+
+/* ---------------------------- pass & reveal ---------------------------- */
+
+function renderPass(){
+  const p = state.players[state.turn];
+  document.getElementById('passProgress').textContent =
+    'Player ' + (state.turn + 1) + ' of ' + state.players.length;
+  document.getElementById('passName').textContent = 'Pass to ' + p.name;
+}
+
+document.getElementById('showBtn').addEventListener('click', () => {
+  const p = state.players[state.turn];
+  document.getElementById('cardProgress').textContent =
+    p.name + ' — ' + (state.turn + 1) + ' of ' + state.players.length;
+
+  const card = document.getElementById('theCard');
+
+  // In "told" mode the imposter gets a visibly different card.
+  // In "dark" mode every card is identical in shape, so nothing gives it away.
+  if(state.mode === 'told' && p.isImposter){
+    card.className = 'card imposter';
+    card.innerHTML =
+      '<div class="kicker">Your role</div>' +
+      '<div class="species">You are the imposter</div>' +
+      '<div class="warn">You don\'t get a species. Listen to what the others say, ' +
+      'and give a clue vague enough to pass for one of them.</div>';
+  } else {
+    const s = p.species;
+    card.className = 'card';
+    card.innerHTML =
+      '<div class="kicker">Your species</div>' +
+      '<div class="species">' + esc(s.name) + '</div>' +
+      '<div class="types">' +
+        s.types.map(t => '<span class="badge">' + esc(t) + '</span>').join('') +
+      '</div>';
+  }
+  show('cardview');
+});
+
+document.getElementById('hideBtn').addEventListener('click', () => {
+  // Wipe the card immediately — never leave one player's species sitting in
+  // the DOM while the device is being handed to the next player.
+  const card = document.getElementById('theCard');
+  card.className = 'card';
+  card.innerHTML = '';
+
+  state.turn++;
+  if(state.turn >= state.players.length){
+    renderDiscuss();
+    show('discuss');
+  } else {
+    renderPass();
+    show('pass');
+  }
+});
+
+/* ---------------------------- discuss ---------------------------- */
+
+function renderDiscuss(){
+  document.getElementById('orderRow').innerHTML = state.players.map((p, i) =>
+    '<span class="ochip"><span class="n">' + (i + 1) + '</span>' + esc(p.name) + '</span>'
+  ).join('');
+}
+
+document.getElementById('toAccuseBtn').addEventListener('click', () => {
+  renderAccuse();
+  show('accuse');
+});
+
+/* ---------------------------- accuse ---------------------------- */
+
+function renderAccuse(){
+  state.accused = null;
+  document.getElementById('voteGrid').innerHTML = state.players.map((p, i) =>
+    '<button class="vote" data-i="' + i + '">' + esc(p.name) + '</button>'
+  ).join('');
+  document.getElementById('lockVoteBtn').disabled = true;
+
+  document.querySelectorAll('#voteGrid .vote').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.accused = parseInt(btn.getAttribute('data-i'), 10);
+      document.querySelectorAll('#voteGrid .vote').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      document.getElementById('lockVoteBtn').disabled = false;
+    });
+  });
+}
+
+document.getElementById('lockVoteBtn').addEventListener('click', () => {
+  renderResult();
+  show('result');
+});
+
+/* ---------------------------- result ---------------------------- */
+
+function renderResult(){
+  const impIndex = state.players.findIndex(p => p.isImposter);
+  const imp = state.players[impIndex];
+  const caught = state.accused === impIndex;
+
+  if(caught) state.crewWins++; else state.impWins++;
+
+  const v = document.getElementById('verdict');
+  v.textContent = caught ? 'Caught them.' : 'They got away.';
+  v.className = 'verdict ' + (caught ? 'crew' : 'imp');
+
+  const accusedName = state.players[state.accused].name;
+  let sub;
+  if(caught){
+    sub = esc(imp.name) + ' was the imposter — and you called it.';
+  } else {
+    sub = 'You accused ' + esc(accusedName) + ', but ' + esc(imp.name) + ' was the imposter.';
+  }
+  if(state.mode === 'dark'){
+    sub += caught
+      ? ' They never even knew.'
+      : ' They had no idea they were the odd one out.';
+  }
+  document.getElementById('verdictSub').innerHTML = sub;
+
+  document.getElementById('crewWins').textContent = state.crewWins;
+  document.getElementById('impWins').textContent  = state.impWins;
+
+  const rows = state.players.map(p => {
+    const what = (state.mode === 'told' && p.isImposter)
+      ? 'no species — bluffing'
+      : p.species.name;
+    return '<div class="rrow' + (p.isImposter ? ' isimp' : '') + '">' +
+      '<span class="who">' + esc(p.name) + (p.isImposter ? ' — imposter' : '') + '</span>' +
+      '<span class="what">' + esc(what) + '</span>' +
+    '</div>';
+  }).join('');
+
+  const pairNote =
+    '<div class="rrow" style="border-top:2px dashed var(--line);margin-top:6px;">' +
+      '<span class="who" style="color:var(--muted);font-weight:400;font-size:13px;">The pair</span>' +
+      '<span class="what">' + esc(state.crewSpecies.name) + ' vs ' + esc(state.impSpecies.name) +
+      ' · ' + esc(state.crewSpecies.types.join('/')) + ' · ' + esc(state.crewSpecies.region) + '</span>' +
+    '</div>';
+
+  document.getElementById('resultRows').innerHTML = rows + pairNote;
+}
+
+document.getElementById('againBtn').addEventListener('click', () => {
+  deal();
+  renderPass();
+  show('pass');
+});
+
+document.getElementById('backSetupBtn').addEventListener('click', () => {
+  renderSetup();
+  show('setup');
+});
+
+document.getElementById('quitBtn').addEventListener('click', () => {
+  state.crewWins = 0;
+  state.impWins = 0;
+  renderSetup();
+  show('setup');
+});
+
+renderSetup();
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>

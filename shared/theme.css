@@ -1,0 +1,217 @@
+/* Hot Seat — hub styling. Games keep their own look; this is the frame around them. */
+
+:root{
+  --paper:      #F4EDDD;
+  --paper-warm: #EDE3CC;
+  --card:       #FBF7EC;
+  --ink:        #21201C;
+  --ink-soft:   #6B6355;
+  --line:       rgba(33,32,28,0.14);
+  --line-firm:  rgba(33,32,28,0.28);
+  --brass:      #C9A227;
+}
+
+*{ box-sizing: border-box; }
+
+html,body{ margin:0; padding:0; }
+
+body{
+  background: var(--paper);
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(255,255,255,0.55), transparent 42%),
+    radial-gradient(circle at 82% 78%, rgba(201,162,39,0.07), transparent 46%);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  padding: 0 20px 64px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap{ max-width: 940px; margin: 0 auto; }
+
+/* ---- masthead ---- */
+
+.masthead{
+  padding: 56px 0 12px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 4px;
+}
+
+.wordmark{
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: clamp(38px, 7vw, 62px);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  margin: 0;
+}
+
+.wordmark .seat{
+  display:inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0 .18em .06em;
+  border-radius: 3px;
+}
+
+.tagline{
+  font-size: 15px;
+  color: var(--ink-soft);
+  margin: 14px 0 0;
+  max-width: 46ch;
+  line-height: 1.55;
+}
+
+.rule-thin{
+  height: 4px;
+  border-bottom: 1px solid var(--ink);
+  margin-bottom: 40px;
+}
+
+/* ---- game cards ---- */
+
+.shelf{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 22px;
+}
+
+.card{
+  --accent: var(--ink);
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line-firm);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  box-shadow: 0 1px 0 rgba(33,32,28,0.06);
+}
+
+.card:hover,
+.card:focus-visible{
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 24px -12px rgba(33,32,28,0.45);
+  outline: none;
+}
+
+.card:focus-visible{ box-shadow: 0 0 0 3px var(--brass), 0 10px 24px -12px rgba(33,32,28,0.45); }
+
+/* motif panel — CSS-drawn, no image assets */
+.motif{
+  height: 116px;
+  background: var(--accent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex: none;
+}
+
+.motif::after{
+  content:'';
+  position:absolute; inset:0;
+  background: linear-gradient(160deg, rgba(255,255,255,0.16), transparent 58%);
+  pointer-events:none;
+}
+
+.motif-number{
+  font-family: 'Space Grotesk', monospace;
+  font-weight: 700;
+  font-size: 46px;
+  letter-spacing: -0.02em;
+  color: rgba(255,255,255,0.92);
+}
+.motif-number small{
+  font-size: 24px;
+  opacity: .6;
+  margin-right: 2px;
+}
+
+.motif-swatches{ display:flex; gap:9px; }
+.motif-swatches i{
+  display:block;
+  width: 30px; height: 44px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.28);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.card-body{
+  padding: 20px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card h2{
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+}
+
+.card p{
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+  flex: 1;
+}
+
+.meta{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.chip{
+  border: 1px solid var(--line-firm);
+  border-radius: 100px;
+  padding: 3px 10px;
+  color: var(--ink-soft);
+}
+
+.chip-strong{
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.play{
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.card:hover .play::after{ transform: translateX(3px); }
+.play::after{
+  content:' →';
+  display:inline-block;
+  transition: transform .16s ease;
+}
+
+/* ---- footer ---- */
+
+.foot{
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+@media (max-width: 520px){
+  .masthead{ padding-top: 36px; }
+  .shelf{ gap: 16px; }
+}
