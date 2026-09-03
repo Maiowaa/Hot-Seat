@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Odd One Out</title>
+<meta name="description" content="A fast Pokémon party game for 1–6 players. Three of the four species share something — type, generation or colour. Spot the one that doesn't.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/game.css">
+<style>
+  :root{ --accent:#2E7D8A; --accent-dark:#22606B; }
+
+  .turnbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:14px;
+  }
+  .turnbar .who{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px;
+    letter-spacing:-0.01em;
+  }
+  .clock{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px;
+    min-width:44px; text-align:right; color:var(--ink-soft);
+  }
+  .clock.low{ color:var(--bad); }
+
+  .choices{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px; }
+  .choice{
+    padding:20px 12px; border-radius:12px; cursor:pointer; min-height:74px;
+    border:2px solid var(--line-firm); background:var(--card); color:var(--ink);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px;
+    line-height:1.2; transition:all .12s ease;
+  }
+  .choice:hover:not(:disabled){ border-color:var(--accent); transform:translateY(-2px); }
+  .choice:disabled{ cursor:default; }
+  .choice.right{ border-color:var(--good); background:rgba(79,138,91,0.13); color:#2F5E39; }
+  .choice.wrong{ border-color:var(--bad); background:rgba(194,69,59,0.11); color:#8F2C25; }
+  .choice.dim{ opacity:.42; }
+
+  .verdict{
+    margin-top:14px; padding:14px; border-radius:11px; text-align:center;
+    border:2px dashed var(--line-firm);
+  }
+  .verdict .head{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px;
+    margin-bottom:5px;
+  }
+  .verdict.right .head{ color:var(--good); }
+  .verdict.wrong .head{ color:var(--bad); }
+  .verdict .rule{ font-size:13.5px; color:var(--ink-soft); line-height:1.55; }
+  .verdict .rule b{ color:var(--ink); }
+
+  .final{ text-align:center; padding:8px 0 4px; }
+  .final .champ{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .standings{ margin:18px 0 4px; }
+  .strow{
+    display:flex; justify-content:space-between; padding:9px 0;
+    border-top:1px solid var(--line); font-size:14.5px;
+  }
+  .strow:first-child{ border-top:none; }
+  .strow .nm{ font-weight:600; }
+  .strow.win .nm{ color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Odd One Out</h1>
+    <div class="tag">three belong together, one doesn't</div>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <div id="setup">
+    <div class="panel">
+      <h2>How many players?</h2>
+      <p class="hint">Take turns. Three of the four species share a type, a generation or a colour — tap the one that doesn't belong.</p>
+
+      <div class="countrow" id="countRow"></div>
+
+      <p class="seclabel">Which species can come up?</p>
+      <div class="countrow" id="poolRow"></div>
+
+      <p class="seclabel">Time per turn</p>
+      <div class="countrow" id="timeRow"></div>
+
+      <p class="seclabel">Names</p>
+      <div class="namegrid" id="nameGrid"></div>
+
+      <button class="accent" id="startBtn">Start</button>
+    </div>
+  </div>
+
+  <!-- ============ PLAY ============ -->
+  <div id="play" style="display:none;">
+    <div class="score">
+      <div class="roundchip">First to <span id="targetNum">5</span></div>
+      <div class="scores" id="scoreRow"></div>
+    </div>
+
+    <div class="panel">
+      <div class="turnbar">
+        <div class="who" id="whoTurn"></div>
+        <div class="clock" id="clock"></div>
+      </div>
+
+      <div class="choices" id="choices"></div>
+
+      <div id="verdictBox"></div>
+
+      <button class="accent" id="nextBtn" style="display:none;margin-top:12px;">Next</button>
+    </div>
+
+    <button class="ghost" id="quitBtn">Change players / restart</button>
+  </div>
+
+  <!-- ============ GAME OVER ============ -->
+  <div id="over" style="display:none;">
+    <div class="panel">
+      <div class="final">
+        <div class="champ" id="champ"></div>
+        <div class="muted" id="champSub"></div>
+      </div>
+      <div class="standings" id="standings"></div>
+      <button class="accent" id="againBtn">Play again</button>
+      <button class="secondary" id="backSetupBtn">Change players</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../data/dex-names.js"></script>
+<script src="../data/dex-entries.js"></script>
+<script src="../shared/dex.js"></script>
+<script>
+const MIN_PLAYERS = 1;
+const MAX_PLAYERS = 6;
+const TARGET = 5;
+
+const TIMES = [
+  {key:'off', label:'Relaxed', secs:0,  note:'no clock'},
+  {key:'20',  label:'20s',     secs:20, note:'gentle'},
+  {key:'12',  label:'12s',     secs:12, note:'brisk'},
+];
+
+let state = {
+  count: 2,
+  pool: 'early',
+  time: '20',
+  names: [],
+  players: [],
+  turn: 0,
+  puzzle: null,
+  answered: false,
+  tick: null,
+  left: 0,
+};
+
+for(let i = 0; i < MAX_PLAYERS; i++) state.names[i] = 'Player ' + (i + 1);
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function show(id){
+  ['setup','play','over'].forEach(s => {
+    document.getElementById(s).style.display = (s === id ? 'block' : 'none');
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ==================== puzzle generation ====================
+
+   A quad is only fair if exactly ONE rule explains it. Pick three Fire types
+   plus a Water type and you may accidentally have also made three Gen 1s plus
+   a Gen 4 — two defensible answers, one of them marked wrong. So we generate a
+   candidate, then count every 3-1 split across all three properties and keep
+   the quad only when precisely one exists.                                   */
+
+function splitsOf(quad){
+  const found = [];
+
+  const bump = (map, k) => { map[k] = (map[k] || 0) + 1; };
+
+  const gens = {}, cols = {}, types = {};
+  quad.forEach(e => {
+    bump(gens, e.gen);
+    bump(cols, e.colorName);
+    e.types.forEach(t => bump(types, t));
+  });
+
+  Object.keys(gens).forEach(k => { if(gens[k] === 3) found.push({kind:'gen', value:k}); });
+  Object.keys(cols).forEach(k => { if(cols[k] === 3) found.push({kind:'colour', value:k}); });
+  Object.keys(types).forEach(k => { if(types[k] === 3) found.push({kind:'type', value:k}); });
+
+  return found;
+}
+
+function hasProp(e, split){
+  if(split.kind === 'gen')    return String(e.gen) === String(split.value);
+  if(split.kind === 'colour') return e.colorName === split.value;
+  return e.types.indexOf(split.value) !== -1;
+}
+
+function makePuzzle(maxDex){
+  const pool = DEX.all(maxDex);
+
+  for(let attempt = 0; attempt < 600; attempt++){
+    // Seed on a random property so all three kinds show up over a session.
+    const seed = pool[Math.floor(Math.random() * pool.length)];
+    const kinds = ['type', 'gen', 'colour'];
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+
+    let value;
+    if(kind === 'type')        value = seed.types[Math.floor(Math.random() * seed.types.length)];
+    else if(kind === 'gen')    value = String(seed.gen);
+    else                       value = seed.colorName;
+
+    const probe = {kind, value};
+    const withProp = [], without = [];
+    for(const e of pool){
+      (hasProp(e, probe) ? withProp : without).push(e);
+    }
+    if(withProp.length < 3 || without.length < 1) continue;
+
+    const trio = DEX.sample(withProp, 3);
+    const odd  = without[Math.floor(Math.random() * without.length)];
+    const quad = DEX.shuffle(trio.concat([odd]));
+
+    const splits = splitsOf(quad);
+    if(splits.length !== 1) continue;          // ambiguous or degenerate
+
+    const rule = splits[0];
+    const answer = quad.filter(e => !hasProp(e, rule));
+    if(answer.length !== 1) continue;          // belt and braces
+
+    return {quad, rule, answer: answer[0]};
+  }
+  return null;
+}
+
+function ruleText(rule, odd){
+  if(rule.kind === 'gen'){
+    const g = DEX.GENERATIONS.find(x => String(x.gen) === String(rule.value));
+    return 'Three were <b>Generation ' + esc(rule.value) + '</b> (' + esc(g ? g.region : '') +
+           ') — <b>' + esc(odd.name) + '</b> is Gen ' + esc(odd.gen) + '.';
+  }
+  if(rule.kind === 'colour'){
+    return 'Three were <b>' + esc(rule.value) + '</b> — <b>' + esc(odd.name) +
+           '</b> is ' + esc(odd.colorName) + '.';
+  }
+  return 'Three were <b>' + esc(rule.value) + '</b> type — <b>' + esc(odd.name) +
+         '</b> is ' + esc(odd.types.join('/')) + '.';
+}
+
+/* ==================== setup ==================== */
+
+function renderSetup(){
+  const row = document.getElementById('countRow');
+  row.innerHTML = '';
+  for(let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++){
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (n === state.count ? ' on' : '');
+    b.textContent = n;
+    b.addEventListener('click', () => { captureNames(); state.count = n; renderSetup(); });
+    row.appendChild(b);
+  }
+
+  const pr = document.getElementById('poolRow');
+  pr.innerHTML = '';
+  DEX.POOLS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (p.key === state.pool ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(p.label) + '<span class="sub">' + esc(p.note) + '</span>';
+    b.addEventListener('click', () => { captureNames(); state.pool = p.key; renderSetup(); });
+    pr.appendChild(b);
+  });
+
+  const tr = document.getElementById('timeRow');
+  tr.innerHTML = '';
+  TIMES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (t.key === state.time ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(t.label) + '<span class="sub">' + esc(t.note) + '</span>';
+    b.addEventListener('click', () => { captureNames(); state.time = t.key; renderSetup(); });
+    tr.appendChild(b);
+  });
+
+  const grid = document.getElementById('nameGrid');
+  grid.innerHTML = '';
+  for(let i = 0; i < state.count; i++){
+    const wrap = document.createElement('div');
+    wrap.className = 'namerow';
+    wrap.innerHTML = '<span class="swatch"></span>' +
+      '<input type="text" maxlength="14" value="' + escAttr(state.names[i]) + '">';
+    grid.appendChild(wrap);
+  }
+}
+
+function captureNames(){
+  document.querySelectorAll('#nameGrid input').forEach((inp, i) => {
+    state.names[i] = inp.value.trim() || ('Player ' + (i + 1));
+  });
+}
+
+function secsFor(){
+  const t = TIMES.find(x => x.key === state.time);
+  return t ? t.secs : 0;
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  captureNames();
+  state.players = [];
+  for(let i = 0; i < state.count; i++){
+    state.players.push({id:'p' + (i+1), name: state.names[i], score: 0});
+  }
+  state.turn = 0;
+  document.getElementById('targetNum').textContent = TARGET;
+  show('play');
+  nextTurn();
+});
+
+/* ==================== play ==================== */
+
+function renderScores(){
+  const best = Math.max.apply(null, state.players.map(p => p.score));
+  document.getElementById('scoreRow').innerHTML = state.players.map((p, i) =>
+    '<div class="sc' + (p.score === best && best > 0 ? ' lead' : '') +
+      (i === state.turn ? ' active' : '') + '">' +
+      '<div class="n">' + p.score + '</div>' +
+      '<div class="l">' + esc(p.name) + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function stopClock(){
+  if(state.tick){ clearInterval(state.tick); state.tick = null; }
+}
+
+function startClock(){
+  const secs = secsFor();
+  const el = document.getElementById('clock');
+  stopClock();
+  if(!secs){ el.textContent = ''; return; }
+
+  state.left = secs;
+  el.textContent = state.left + 's';
+  el.classList.remove('low');
+
+  state.tick = setInterval(() => {
+    state.left--;
+    el.textContent = Math.max(0, state.left) + 's';
+    el.classList.toggle('low', state.left <= 5);
+    if(state.left <= 0){
+      stopClock();
+      resolve(null);            // ran out of time
+    }
+  }, 1000);
+}
+
+function nextTurn(){
+  const puzzle = makePuzzle(DEX.poolMax(state.pool));
+  if(!puzzle){
+    document.getElementById('verdictBox').innerHTML =
+      '<div class="verdict"><div class="rule">Could not build a clean puzzle from this range — try a wider species pool.</div></div>';
+    return;
+  }
+  state.puzzle = puzzle;
+  state.answered = false;
+
+  renderScores();
+  document.getElementById('whoTurn').textContent = state.players[state.turn].name + "'s turn";
+  document.getElementById('verdictBox').innerHTML = '';
+  document.getElementById('nextBtn').style.display = 'none';
+
+  document.getElementById('choices').innerHTML = puzzle.quad.map((e, i) =>
+    '<button class="choice" data-i="' + i + '">' + esc(e.name) + '</button>'
+  ).join('');
+
+  document.querySelectorAll('#choices .choice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      resolve(puzzle.quad[parseInt(btn.getAttribute('data-i'), 10)]);
+    });
+  });
+
+  startClock();
+}
+
+function resolve(picked){
+  if(state.answered) return;
+  state.answered = true;
+  stopClock();
+  document.getElementById('clock').textContent = '';
+
+  const {quad, rule, answer} = state.puzzle;
+  const correct = picked === answer;
+  if(correct) state.players[state.turn].score++;
+
+  document.querySelectorAll('#choices .choice').forEach(btn => {
+    const e = quad[parseInt(btn.getAttribute('data-i'), 10)];
+    btn.disabled = true;
+    if(e === answer) btn.classList.add('right');
+    else if(e === picked) btn.classList.add('wrong');
+    else btn.classList.add('dim');
+  });
+
+  const head = correct ? 'Correct' : (picked ? 'Not quite' : 'Out of time');
+  document.getElementById('verdictBox').innerHTML =
+    '<div class="verdict ' + (correct ? 'right' : 'wrong') + '">' +
+      '<div class="head">' + head + '</div>' +
+      '<div class="rule">' + ruleText(rule, answer) + '</div>' +
+    '</div>';
+
+  renderScores();
+
+  const winner = state.players.find(p => p.score >= TARGET);
+  const btn = document.getElementById('nextBtn');
+  btn.style.display = 'block';
+  btn.textContent = winner ? 'See final standings' : 'Next player';
+}
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  const winner = state.players.find(p => p.score >= TARGET);
+  if(winner){ finish(); return; }
+  state.turn = (state.turn + 1) % state.players.length;
+  nextTurn();
+});
+
+/* ==================== game over ==================== */
+
+function finish(){
+  stopClock();
+  const sorted = state.players.slice().sort((a, b) => b.score - a.score);
+  const best = sorted[0].score;
+  const champs = sorted.filter(p => p.score === best);
+
+  document.getElementById('champ').textContent = champs.length === 1
+    ? champs[0].name + ' wins'
+    : champs.map(c => c.name).join(' & ') + ' tie';
+  document.getElementById('champSub').textContent = best + ' point' + (best === 1 ? '' : 's');
+
+  document.getElementById('standings').innerHTML = sorted.map(p =>
+    '<div class="strow' + (p.score === best ? ' win' : '') + '">' +
+      '<span class="nm">' + esc(p.name) + '</span><span>' + p.score + '</span>' +
+    '</div>'
+  ).join('');
+
+  show('over');
+}
+
+document.getElementById('againBtn').addEventListener('click', () => {
+  state.players.forEach(p => { p.score = 0; });
+  state.turn = 0;
+  show('play');
+  nextTurn();
+});
+
+document.getElementById('backSetupBtn').addEventListener('click', () => {
+  renderSetup(); show('setup');
+});
+document.getElementById('quitBtn').addEventListener('click', () => {
+  stopClock(); renderSetup(); show('setup');
+});
+
+renderSetup();
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>

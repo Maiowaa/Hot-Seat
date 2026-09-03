@@ -37,5 +37,53 @@ window.GAMES = [
     accent: '#4B3A6B',
     accentDark: '#332748',
     motif: 'mask'
+  },
+  {
+    id: 'odd-one-out',
+    title: 'Odd One Out',
+    file: 'games/odd-one-out.html',
+    tagline: 'Four species. Three share a type, a generation or a colour — and one is quietly wrong. Twenty seconds to say which.',
+    players: '1–6 players',
+    length: '~3 min',
+    tags: ['quickfire', 'spot the difference'],
+    accent: '#2E7D8A',
+    accentDark: '#22606B',
+    motif: 'quad'
+  },
+  {
+    id: 'type-chain',
+    title: 'Type Chain',
+    file: 'games/type-chain.html',
+    tagline: 'Name a species sharing a type with the last one. No repeats, clock running. Stall and you are out — last one standing takes it.',
+    players: '1–8 players',
+    length: '~8 min',
+    tags: ['word chain', 'elimination'],
+    accent: '#4F8A5B',
+    accentDark: '#3C6B45',
+    motif: 'chain'
+  },
+  {
+    id: 'narrow-it-down',
+    title: 'Narrow It Down',
+    file: 'games/narrow-it-down.html',
+    tagline: 'The app hides a species and answers your questions honestly. Twenty of them, everyone against the dex — a wrong guess costs three.',
+    players: 'co-op, any number',
+    length: '~7 min',
+    tags: ['deduction', 'co-operative'],
+    accent: '#7A5C3E',
+    accentDark: '#5E462E',
+    motif: 'funnel'
+  },
+  {
+    id: 'dexle',
+    title: 'Dexle',
+    file: 'games/dexle.html',
+    tagline: 'Eight guesses. Each one reports back on type, generation, colour and dex number. Alone, or pass the phone and race the same species.',
+    players: '1–6 players',
+    length: '~5 min',
+    tags: ['puzzle', 'daily-style'],
+    accent: '#B03A5B',
+    accentDark: '#8C2C48',
+    motif: 'grid'
   }
 ];

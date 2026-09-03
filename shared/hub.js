@@ -10,6 +10,25 @@
   }
 
   function motif(game) {
+    if (game.motif === 'quad') {
+      // 2x2 of tiles, one out of step
+      return '<div class="motif-quad">' +
+        '<i></i><i></i><i></i><i class="odd"></i></div>';
+    }
+    if (game.motif === 'chain') {
+      // interlocking links
+      return '<div class="motif-chain"><i></i><i></i><i></i></div>';
+    }
+    if (game.motif === 'funnel') {
+      // narrowing bars
+      return '<div class="motif-funnel"><i></i><i></i><i></i><i></i></div>';
+    }
+    if (game.motif === 'grid') {
+      // a Wordle-ish feedback row
+      return '<div class="motif-grid">' +
+        '<i class="miss"></i><i class="near"></i><i class="hit"></i>' +
+        '<i class="miss"></i><i class="hit"></i></div>';
+    }
     if (game.motif === 'mask') {
       // three identical cards, one turned — the odd one out
       return '<div class="motif-swatches">' +

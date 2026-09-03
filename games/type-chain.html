@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Type Chain</title>
+<meta name="description" content="A Pokémon word-chain party game for 1–8 players. Name a species sharing a type with the last one, no repeats, before the clock runs out.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/game.css">
+<style>
+  :root{ --accent:#4F8A5B; --accent-dark:#3C6B45; }
+
+  .turnbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:14px;
+  }
+  .turnbar .who{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px;
+  }
+  .clock{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px;
+    min-width:52px; text-align:right; color:var(--ink-soft);
+  }
+  .clock.low{ color:var(--bad); }
+
+  .link{
+    border:2px solid var(--accent); border-radius:12px; padding:16px;
+    background:rgba(79,138,91,0.07); text-align:center; margin-bottom:14px;
+  }
+  .link .lab{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--ink-soft); margin-bottom:5px;
+  }
+  .link .nm{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:27px;
+    letter-spacing:-0.02em; margin-bottom:8px;
+  }
+  .link .types{ display:flex; gap:6px; justify-content:center; }
+  .link .badge{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  .ask{ font-size:13.5px; color:var(--ink-soft); margin:0 0 10px; text-align:center; }
+  .ask b{ color:var(--ink); }
+
+  .err{
+    font-size:13px; color:var(--bad); margin-top:8px; min-height:17px; font-weight:500;
+  }
+
+  .chain{ margin-top:14px; }
+  .chain .lab{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--ink-soft); margin-bottom:7px;
+  }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    font-size:12px; padding:5px 10px; border-radius:100px;
+    background:rgba(33,32,28,0.06); border:1px solid var(--line);
+  }
+  .chip .by{ color:var(--ink-soft); }
+  .chip.head{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .chip.head .by{ color:rgba(255,255,255,.75); }
+
+  .final{ text-align:center; padding:8px 0 4px; }
+  .final .champ{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .strow{
+    display:flex; justify-content:space-between; padding:9px 0;
+    border-top:1px solid var(--line); font-size:14.5px;
+  }
+  .strow:first-child{ border-top:none; }
+  .strow .nm{ font-weight:600; }
+  .strow.out .nm{ opacity:.55; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Type Chain</h1>
+    <div class="tag">keep the type going</div>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <div id="setup">
+    <div class="panel">
+      <h2>How many players?</h2>
+      <p class="hint">Name a species that shares a type with the one before it. No repeats. Run out of time and you're out — last one standing wins. On your own, it's a streak run.</p>
+
+      <div class="countrow" id="countRow"></div>
+
+      <p class="seclabel">Which species can come up?</p>
+      <div class="countrow" id="poolRow"></div>
+
+      <p class="seclabel">Time per turn</p>
+      <div class="countrow" id="timeRow"></div>
+
+      <p class="seclabel">Names</p>
+      <div class="namegrid" id="nameGrid"></div>
+
+      <button class="accent" id="startBtn">Start the chain</button>
+    </div>
+  </div>
+
+  <!-- ============ PLAY ============ -->
+  <div id="play" style="display:none;">
+    <div class="score">
+      <div class="roundchip">Chain <span id="chainLen">0</span></div>
+      <div class="scores" id="scoreRow"></div>
+    </div>
+
+    <div class="panel">
+      <div class="turnbar">
+        <div class="who" id="whoTurn"></div>
+        <div class="clock" id="clock"></div>
+      </div>
+
+      <div class="link" id="linkBox"></div>
+
+      <p class="ask" id="askLine"></p>
+
+      <div class="ac-wrap">
+        <input class="textin" id="guess" placeholder="Type a species name…" autocomplete="off">
+        <div class="suggestions" id="sugg" style="display:none;"></div>
+      </div>
+      <div class="err" id="err"></div>
+
+      <div class="chain">
+        <div class="lab">The chain so far</div>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+
+    <button class="ghost" id="quitBtn">Change players / restart</button>
+  </div>
+
+  <!-- ============ OVER ============ -->
+  <div id="over" style="display:none;">
+    <div class="panel">
+      <div class="final">
+        <div class="champ" id="champ"></div>
+        <div class="muted" id="champSub"></div>
+      </div>
+      <div id="standings" style="margin:18px 0 4px;"></div>
+      <button class="accent" id="againBtn">Play again</button>
+      <button class="secondary" id="backSetupBtn">Change players</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../data/dex-names.js"></script>
+<script src="../data/dex-entries.js"></script>
+<script src="../shared/dex.js"></script>
+<script>
+const MIN_PLAYERS = 1;
+const MAX_PLAYERS = 8;
+
+const TIMES = [
+  {key:'45', label:'45s', secs:45, note:'kind'},
+  {key:'30', label:'30s', secs:30, note:'standard'},
+  {key:'15', label:'15s', secs:15, note:'panic'},
+];
+
+let state = {
+  count: 3,
+  pool: 'early',
+  time: '30',
+  names: [],
+  players: [],       // {id, name, alive, links}
+  turn: 0,
+  link: null,        // current head of the chain
+  used: {},          // dex num -> true
+  chain: [],         // [{entry, by}]
+  tick: null,
+  left: 0,
+};
+
+for(let i = 0; i < MAX_PLAYERS; i++) state.names[i] = 'Player ' + (i + 1);
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function show(id){
+  ['setup','play','over'].forEach(s => {
+    document.getElementById(s).style.display = (s === id ? 'block' : 'none');
+  });
+  window.scrollTo(0, 0);
+}
+function maxDex(){ return DEX.poolMax(state.pool); }
+function secsFor(){
+  const t = TIMES.find(x => x.key === state.time);
+  return t ? t.secs : 30;
+}
+
+/* ==================== setup ==================== */
+
+function renderSetup(){
+  const row = document.getElementById('countRow');
+  row.innerHTML = '';
+  for(let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++){
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (n === state.count ? ' on' : '');
+    b.textContent = n;
+    b.addEventListener('click', () => { captureNames(); state.count = n; renderSetup(); });
+    row.appendChild(b);
+  }
+
+  const pr = document.getElementById('poolRow');
+  pr.innerHTML = '';
+  DEX.POOLS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (p.key === state.pool ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(p.label) + '<span class="sub">' + esc(p.note) + '</span>';
+    b.addEventListener('click', () => { captureNames(); state.pool = p.key; renderSetup(); });
+    pr.appendChild(b);
+  });
+
+  const tr = document.getElementById('timeRow');
+  tr.innerHTML = '';
+  TIMES.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (t.key === state.time ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(t.label) + '<span class="sub">' + esc(t.note) + '</span>';
+    b.addEventListener('click', () => { captureNames(); state.time = t.key; renderSetup(); });
+    tr.appendChild(b);
+  });
+
+  const grid = document.getElementById('nameGrid');
+  grid.innerHTML = '';
+  for(let i = 0; i < state.count; i++){
+    const wrap = document.createElement('div');
+    wrap.className = 'namerow';
+    wrap.innerHTML = '<span class="swatch"></span>' +
+      '<input type="text" maxlength="14" value="' + escAttr(state.names[i]) + '">';
+    grid.appendChild(wrap);
+  }
+}
+
+function captureNames(){
+  document.querySelectorAll('#nameGrid input').forEach((inp, i) => {
+    state.names[i] = inp.value.trim() || ('Player ' + (i + 1));
+  });
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  captureNames();
+  state.players = [];
+  for(let i = 0; i < state.count; i++){
+    state.players.push({id:'p'+(i+1), name: state.names[i], alive: true, links: 0});
+  }
+  state.turn = 0;
+  state.used = {};
+  state.chain = [];
+
+  const seed = DEX.random(maxDex());
+  state.link = seed;
+  state.used[seed.num] = true;
+  state.chain.push({entry: seed, by: null});
+
+  show('play');
+  renderTurn();
+});
+
+/* ==================== play ==================== */
+
+function aliveCount(){
+  return state.players.filter(p => p.alive).length;
+}
+
+function renderScores(){
+  document.getElementById('scoreRow').innerHTML = state.players.map((p, i) =>
+    '<div class="sc' + (p.alive ? '' : ' out') + (i === state.turn && p.alive ? ' active' : '') + '">' +
+      '<div class="n">' + p.links + '</div>' +
+      '<div class="l">' + esc(p.name) + '</div>' +
+    '</div>'
+  ).join('');
+  document.getElementById('chainLen').textContent = state.chain.length - 1;
+}
+
+function renderChain(){
+  const recent = state.chain.slice(-8).reverse();
+  document.getElementById('chips').innerHTML = recent.map((c, i) =>
+    '<span class="chip' + (i === 0 ? ' head' : '') + '">' + esc(c.entry.name) +
+      (c.by ? ' <span class="by">· ' + esc(c.by) + '</span>' : ' <span class="by">· start</span>') +
+    '</span>'
+  ).join('');
+}
+
+function renderTurn(){
+  const p = state.players[state.turn];
+  document.getElementById('whoTurn').textContent = p.name + "'s turn";
+
+  document.getElementById('linkBox').innerHTML =
+    '<div class="lab">Match a type with</div>' +
+    '<div class="nm">' + esc(state.link.name) + '</div>' +
+    '<div class="types">' + state.link.types.map(t =>
+      '<span class="badge">' + esc(t) + '</span>').join('') + '</div>';
+
+  document.getElementById('askLine').innerHTML =
+    'Name any unused species that is <b>' + state.link.types.map(esc).join('</b> or <b>') + '</b>.';
+
+  const input = document.getElementById('guess');
+  input.value = '';
+  input.disabled = false;
+  document.getElementById('err').textContent = '';
+  document.getElementById('sugg').style.display = 'none';
+
+  renderScores();
+  renderChain();
+  startClock();
+  input.focus();
+}
+
+function stopClock(){
+  if(state.tick){ clearInterval(state.tick); state.tick = null; }
+}
+
+function startClock(){
+  const el = document.getElementById('clock');
+  stopClock();
+  state.left = secsFor();
+  el.textContent = state.left + 's';
+  el.classList.remove('low');
+  state.tick = setInterval(() => {
+    state.left--;
+    el.textContent = Math.max(0, state.left) + 's';
+    el.classList.toggle('low', state.left <= 5);
+    if(state.left <= 0){ stopClock(); timeUp(); }
+  }, 1000);
+}
+
+/* Validation is the whole point of doing this in an app rather than out loud:
+   it settles "does Gyarados count as Flying" without an argument. */
+function validate(raw){
+  const name = String(raw || '').trim();
+  if(!name) return {ok:false, why:'Type a name first.'};
+
+  const e = DEX.findByName(name);
+  if(!e) return {ok:false, why:'"' + name + '" is not a species name.'};
+  if(e.num > maxDex()) return {ok:false, why:e.name + ' is outside the chosen range.'};
+  if(state.used[e.num]) return {ok:false, why:e.name + ' has already been used.'};
+
+  const shares = e.types.some(t => state.link.types.indexOf(t) !== -1);
+  if(!shares){
+    return {ok:false, why:e.name + ' is ' + e.types.join('/') + ' — needs ' +
+                          state.link.types.join(' or ') + '.'};
+  }
+  return {ok:true, entry:e};
+}
+
+function submit(raw){
+  const res = validate(raw);
+  const err = document.getElementById('err');
+  if(!res.ok){
+    err.textContent = res.why;
+    return false;
+  }
+
+  stopClock();
+  err.textContent = '';
+
+  const p = state.players[state.turn];
+  p.links++;
+  state.link = res.entry;
+  state.used[res.entry.num] = true;
+  state.chain.push({entry: res.entry, by: p.name});
+
+  advance();
+  return true;
+}
+
+function timeUp(){
+  const p = state.players[state.turn];
+
+  if(state.players.length === 1){
+    finish();                       // solo run ends on the clock
+    return;
+  }
+
+  p.alive = false;
+  renderScores();
+
+  if(aliveCount() <= 1){ finish(); return; }
+  advance();
+}
+
+function advance(){
+  let guard = 0;
+  do {
+    state.turn = (state.turn + 1) % state.players.length;
+    guard++;
+  } while(!state.players[state.turn].alive && guard <= state.players.length);
+  renderTurn();
+}
+
+/* ---------- autocomplete ---------- */
+
+(function(){
+  const input = document.getElementById('guess');
+  const sugg  = document.getElementById('sugg');
+
+  function pool(){ return DEX.names(maxDex()); }
+
+  input.addEventListener('input', () => {
+    document.getElementById('err').textContent = '';
+    const val = input.value.trim().toLowerCase();
+    if(!val){ sugg.style.display = 'none'; return; }
+
+    const list = pool();
+    const starts = list.filter(n => n.toLowerCase().startsWith(val)).slice(0, 8);
+    const rest = starts.length < 8
+      ? list.filter(n => !n.toLowerCase().startsWith(val) && n.toLowerCase().indexOf(val) !== -1)
+             .slice(0, 8 - starts.length)
+      : [];
+    const all = starts.concat(rest);
+
+    if(!all.length){
+      sugg.innerHTML = '<div class="none">No matching name</div>';
+      sugg.style.display = 'block';
+      return;
+    }
+    sugg.innerHTML = all.map(n =>
+      '<div data-name="' + escAttr(n) + '">' + esc(n) + '</div>').join('');
+    sugg.style.display = 'block';
+  });
+
+  sugg.addEventListener('mousedown', (e) => {
+    const t = e.target.closest('div[data-name]');
+    if(!t) return;
+    const name = t.getAttribute('data-name');
+    sugg.style.display = 'none';
+    if(!submit(name)) input.value = name;
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      sugg.style.display = 'none';
+      submit(input.value);
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { sugg.style.display = 'none'; }, 120);
+  });
+})();
+
+/* ==================== over ==================== */
+
+function finish(){
+  stopClock();
+  const solo = state.players.length === 1;
+  const survivors = state.players.filter(p => p.alive);
+
+  if(solo){
+    const p = state.players[0];
+    document.getElementById('champ').textContent = 'Chain of ' + p.links;
+    document.getElementById('champSub').textContent =
+      p.links === 0 ? 'No links made — try a longer clock.' : 'Links added by ' + p.name + '.';
+  } else {
+    const w = survivors[0];
+    document.getElementById('champ').textContent = w ? w.name + ' survives' : 'Everyone is out';
+    const n = state.chain.length - 1;
+    document.getElementById('champSub').textContent =
+      'Chain reached ' + n + ' link' + (n === 1 ? '' : 's') + '.';
+  }
+
+  const sorted = state.players.slice().sort((a, b) =>
+    (b.alive - a.alive) || (b.links - a.links));
+  document.getElementById('standings').innerHTML = sorted.map(p =>
+    '<div class="strow' + (p.alive ? '' : ' out') + '">' +
+      '<span class="nm">' + esc(p.name) + (p.alive || solo ? '' : ' — out') + '</span>' +
+      '<span>' + p.links + ' link' + (p.links === 1 ? '' : 's') + '</span>' +
+    '</div>'
+  ).join('');
+
+  show('over');
+}
+
+document.getElementById('againBtn').addEventListener('click', () => {
+  state.players.forEach(p => { p.alive = true; p.links = 0; });
+  state.turn = 0;
+  state.used = {};
+  state.chain = [];
+  const seed = DEX.random(maxDex());
+  state.link = seed;
+  state.used[seed.num] = true;
+  state.chain.push({entry: seed, by: null});
+  show('play');
+  renderTurn();
+});
+
+document.getElementById('backSetupBtn').addEventListener('click', () => {
+  stopClock(); renderSetup(); show('setup');
+});
+document.getElementById('quitBtn').addEventListener('click', () => {
+  stopClock(); renderSetup(); show('setup');
+});
+
+renderSetup();
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>

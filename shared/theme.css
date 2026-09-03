@@ -141,6 +141,49 @@ body{
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
+/* Odd One Out — a 2x2 of tiles, one tilted out of line */
+.motif-quad{
+  display:grid; grid-template-columns:repeat(2, 26px); gap:7px;
+}
+.motif-quad i{
+  display:block; height:26px; border-radius:4px;
+  background:rgba(255,255,255,0.34);
+  border:1px solid rgba(255,255,255,0.16);
+}
+.motif-quad i.odd{
+  background:#E0A030; transform:rotate(12deg) scale(1.06);
+  box-shadow:0 2px 8px rgba(0,0,0,0.28);
+}
+
+/* Type Chain — interlocking links */
+.motif-chain{ display:flex; align-items:center; }
+.motif-chain i{
+  display:block; width:34px; height:22px; border-radius:11px;
+  border:3px solid rgba(255,255,255,0.55);
+}
+.motif-chain i + i{ margin-left:-9px; }
+.motif-chain i:last-child{ border-color:#E0A030; }
+
+/* Narrow It Down — bars closing in */
+.motif-funnel{ display:flex; flex-direction:column; gap:5px; align-items:center; }
+.motif-funnel i{
+  display:block; height:7px; border-radius:4px; background:rgba(255,255,255,0.4);
+}
+.motif-funnel i:nth-child(1){ width:88px; }
+.motif-funnel i:nth-child(2){ width:64px; }
+.motif-funnel i:nth-child(3){ width:40px; }
+.motif-funnel i:nth-child(4){ width:18px; background:#E0A030; }
+
+/* Dexle — a row of feedback tiles */
+.motif-grid{ display:flex; gap:6px; }
+.motif-grid i{
+  display:block; width:26px; height:30px; border-radius:4px;
+  background:rgba(255,255,255,0.22);
+  border:1px solid rgba(255,255,255,0.18);
+}
+.motif-grid i.hit{ background:#4F8A5B; border-color:#4F8A5B; }
+.motif-grid i.near{ background:#D79A2B; border-color:#D79A2B; }
+
 .card-body{
   padding: 20px 20px 22px;
   display: flex;

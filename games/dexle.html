@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dexle</title>
+<meta name="description" content="Guess the hidden Pokémon in eight tries. Every guess reports back on type, generation, colour and dex number. Solo, or pass the phone for a race.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/game.css">
+<style>
+  :root{ --accent:#B03A5B; --accent-dark:#8C2C48; --near:#D79A2B; }
+
+  .tries{
+    display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px;
+  }
+  .tries .n{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    letter-spacing:-0.02em;
+  }
+  .tries .n.low{ color:var(--bad); }
+  .tries .lab{ font-size:12.5px; color:var(--ink-soft); }
+  .tries .who{ font-size:12.5px; color:var(--ink-soft); text-align:right; }
+
+  .rows{ margin-top:14px; display:flex; flex-direction:column; gap:9px; }
+  .grow{
+    border:1.5px solid var(--line-firm); border-radius:11px; padding:11px 12px;
+    background:var(--card);
+  }
+  .grow.solved{ border-color:var(--good); background:rgba(79,138,91,0.09); }
+  .ghead{
+    display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+    margin-bottom:8px;
+  }
+  .ghead .nm{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; }
+  .ghead .dex{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px;
+    color:var(--ink-soft); flex:none;
+  }
+  .ghead .dex .arw{ color:var(--accent); }
+
+  .fchips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .fc{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.05em;
+    padding:4px 9px; border-radius:100px; border:1px solid var(--line);
+    background:rgba(33,32,28,0.05); color:var(--ink-soft);
+  }
+  .fc.hit{ background:rgba(79,138,91,0.18); border-color:rgba(79,138,91,.5); color:#33603b; font-weight:600; }
+  .fc.near{ background:rgba(215,154,43,0.20); border-color:rgba(215,154,43,.55); color:#7d5610; font-weight:600; }
+  .fc.miss{ opacity:.62; text-decoration:line-through; }
+
+  .err{ font-size:13px; color:var(--bad); margin-top:8px; min-height:17px; font-weight:500; }
+
+  .legend{
+    margin-top:14px; font-size:12px; color:var(--ink-soft); line-height:1.7;
+    padding-top:12px; border-top:1px solid var(--line);
+  }
+  .legend .k{
+    display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px;
+    vertical-align:baseline;
+  }
+  .k.g{ background:#4F8A5B; } .k.a{ background:var(--near); } .k.m{ background:#B9B2A4; }
+
+  .passwrap{ text-align:center; padding:16px 0 4px; }
+  .passwrap .to{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px;
+    margin-bottom:8px; letter-spacing:-0.02em;
+  }
+  .passwrap .note{ font-size:13.5px; color:var(--ink-soft); margin-bottom:22px; line-height:1.55; }
+
+  .result .head{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    text-align:center; margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .result .head.win{ color:var(--good); }
+  .result .head.lose{ color:var(--bad); }
+  .result .sub{ text-align:center; font-size:13.5px; color:var(--ink-soft); margin-bottom:18px; }
+
+  .answercard{
+    border:2px solid var(--accent); border-radius:12px; padding:18px;
+    text-align:center; background:rgba(176,58,91,0.06); margin-bottom:16px;
+  }
+  .answercard .nm{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px;
+    letter-spacing:-0.02em; margin-bottom:8px;
+  }
+  .answercard .types{ display:flex; gap:6px; justify-content:center; margin-bottom:8px; }
+  .answercard .meta{ font-size:13px; color:var(--ink-soft); }
+
+  .strow{
+    display:flex; justify-content:space-between; padding:9px 0;
+    border-top:1px solid var(--line); font-size:14.5px;
+  }
+  .strow:first-child{ border-top:none; }
+  .strow .nm{ font-weight:600; }
+  .strow.win .nm{ color:var(--accent); }
+  .strow .sc{ color:var(--ink-soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Dexle</h1>
+    <div class="tag">eight tries, one species</div>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <div id="setup">
+    <div class="panel">
+      <h2>How many players?</h2>
+      <p class="hint">Guess the hidden species. Every guess tells you how close you are on type, generation, colour and dex number. With two or more, everyone races the same species — fewest guesses wins.</p>
+
+      <div class="countrow" id="countRow"></div>
+
+      <p class="seclabel">Which species can it pick?</p>
+      <div class="countrow" id="poolRow"></div>
+
+      <p class="seclabel">Names</p>
+      <div class="namegrid" id="nameGrid"></div>
+
+      <button class="accent" id="startBtn">Deal a species</button>
+    </div>
+  </div>
+
+  <!-- ============ PASS ============ -->
+  <div id="pass" style="display:none;">
+    <div class="panel">
+      <div class="passwrap">
+        <div class="to" id="passTo"></div>
+        <div class="note" id="passNote"></div>
+        <button class="accent" id="beginBtn">Start my board</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PLAY ============ -->
+  <div id="play" style="display:none;">
+    <div class="panel">
+      <div class="tries">
+        <div>
+          <div class="n" id="triesNum">8</div>
+          <div class="lab">guesses left</div>
+        </div>
+        <div class="who" id="whoNow"></div>
+      </div>
+
+      <div class="ac-wrap">
+        <input class="textin" id="guess" placeholder="Type a species name…" autocomplete="off">
+        <div class="suggestions" id="sugg" style="display:none;"></div>
+      </div>
+      <div class="err" id="err"></div>
+
+      <div class="rows" id="rows"></div>
+
+      <div class="legend">
+        <span class="k g"></span>exact match &nbsp;
+        <span class="k a"></span>right type, other slot &nbsp;
+        <span class="k m"></span>no match
+      </div>
+    </div>
+
+    <button class="ghost" id="quitBtn">Give up / restart</button>
+  </div>
+
+  <!-- ============ RESULT ============ -->
+  <div id="result" style="display:none;">
+    <div class="panel">
+      <div class="result">
+        <div class="head" id="resHead"></div>
+        <div class="sub" id="resSub"></div>
+      </div>
+      <div class="answercard" id="answerCard"></div>
+      <div id="standings" style="margin-bottom:16px;"></div>
+      <button class="accent" id="againBtn">New species</button>
+      <button class="secondary" id="backSetupBtn">Change players</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../data/dex-names.js"></script>
+<script src="../data/dex-entries.js"></script>
+<script src="../shared/dex.js"></script>
+<script>
+const MAX_TRIES   = 8;
+const MIN_PLAYERS = 1;
+const MAX_PLAYERS = 6;
+
+let state = {
+  count: 1,
+  pool: 'early',
+  names: [],
+  players: [],     // {name, guesses:[], solved:bool, used:number}
+  turn: 0,
+  secret: null,
+};
+
+for(let i = 0; i < MAX_PLAYERS; i++) state.names[i] = 'Player ' + (i + 1);
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function show(id){
+  ['setup','pass','play','result'].forEach(s => {
+    document.getElementById(s).style.display = (s === id ? 'block' : 'none');
+  });
+  window.scrollTo(0, 0);
+}
+function maxDex(){ return DEX.poolMax(state.pool); }
+function me(){ return state.players[state.turn]; }
+
+/* ==================== feedback ====================
+   Types are compared slot-aware: an exact slot match reads green, the right
+   type in the other slot reads amber. That distinction is what makes a
+   dual-type guess worth spending a try on.                                  */
+
+function feedback(guess, secret){
+  function slot(t, i){
+    if(secret.types[i] === t) return 'hit';
+    if(secret.types.indexOf(t) !== -1) return 'near';
+    return 'miss';
+  }
+
+  const t2 = guess.types[1]
+    ? slot(guess.types[1], 1)
+    : (secret.types.length === 1 ? 'hit' : 'miss');
+
+  return {
+    dex: guess.num === secret.num ? 'eq' : (secret.num > guess.num ? 'up' : 'down'),
+    gen: guess.gen === secret.gen ? 'hit' : 'miss',
+    genDir: secret.gen > guess.gen ? 'up' : (secret.gen < guess.gen ? 'down' : ''),
+    t1: slot(guess.types[0], 0),
+    t2: t2,
+    colour: guess.colorName === secret.colorName ? 'hit' : 'miss',
+    legend: guess.legendary === secret.legendary ? 'hit' : 'miss',
+  };
+}
+
+/* ==================== setup ==================== */
+
+function renderSetup(){
+  const row = document.getElementById('countRow');
+  row.innerHTML = '';
+  for(let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++){
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (n === state.count ? ' on' : '');
+    b.textContent = n;
+    b.addEventListener('click', () => { captureNames(); state.count = n; renderSetup(); });
+    row.appendChild(b);
+  }
+
+  const pr = document.getElementById('poolRow');
+  pr.innerHTML = '';
+  DEX.POOLS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (p.key === state.pool ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(p.label) + '<span class="sub">' + esc(p.note) + '</span>';
+    b.addEventListener('click', () => { captureNames(); state.pool = p.key; renderSetup(); });
+    pr.appendChild(b);
+  });
+
+  const grid = document.getElementById('nameGrid');
+  grid.innerHTML = '';
+  for(let i = 0; i < state.count; i++){
+    const wrap = document.createElement('div');
+    wrap.className = 'namerow';
+    wrap.innerHTML = '<span class="swatch"></span>' +
+      '<input type="text" maxlength="14" value="' + escAttr(state.names[i]) + '">';
+    grid.appendChild(wrap);
+  }
+}
+
+function captureNames(){
+  document.querySelectorAll('#nameGrid input').forEach((inp, i) => {
+    state.names[i] = inp.value.trim() || ('Player ' + (i + 1));
+  });
+}
+
+function deal(){
+  state.secret = DEX.random(maxDex());
+  state.players = [];
+  for(let i = 0; i < state.count; i++){
+    state.players.push({name: state.names[i], guesses: [], solved: false, used: 0});
+  }
+  state.turn = 0;
+  beginTurn();
+}
+
+function beginTurn(){
+  if(state.players.length === 1){ openBoard(); return; }
+  document.getElementById('passTo').textContent = 'Pass to ' + me().name;
+  document.getElementById('passNote').textContent =
+    'Everyone races the same species. Player ' + (state.turn + 1) +
+    ' of ' + state.players.length + ' — others, look away.';
+  show('pass');
+}
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  captureNames();
+  deal();
+});
+document.getElementById('beginBtn').addEventListener('click', openBoard);
+
+/* ==================== play ==================== */
+
+function openBoard(){
+  const input = document.getElementById('guess');
+  input.value = '';
+  input.disabled = false;
+  document.getElementById('err').textContent = '';
+  document.getElementById('whoNow').textContent =
+    state.players.length > 1 ? me().name + "'s board" : '';
+  renderRows();
+  show('play');
+  input.focus();
+}
+
+function renderRows(){
+  const p = me();
+  const left = MAX_TRIES - p.guesses.length;
+  const tn = document.getElementById('triesNum');
+  tn.textContent = left;
+  tn.classList.toggle('low', left <= 2);
+
+  document.getElementById('rows').innerHTML = p.guesses.slice().reverse().map(g => {
+    const f = g.fb;
+    const solved = f.dex === 'eq';
+    const arrow = f.dex === 'eq' ? '' :
+      '<span class="arw">' + (f.dex === 'up' ? '▲ higher' : '▼ lower') + '</span>';
+
+    const genLabel = 'gen ' + g.entry.gen +
+      (f.gen === 'hit' ? '' : (f.genDir === 'up' ? ' ▲' : ' ▼'));
+
+    const chips = [
+      '<span class="fc ' + f.gen + '">' + genLabel + '</span>',
+      '<span class="fc ' + f.t1 + '">' + esc(g.entry.types[0]) + '</span>',
+      g.entry.types[1]
+        ? '<span class="fc ' + f.t2 + '">' + esc(g.entry.types[1]) + '</span>'
+        : '<span class="fc ' + f.t2 + '">single type</span>',
+      '<span class="fc ' + f.colour + '">' + esc(g.entry.colorName) + '</span>',
+      '<span class="fc ' + f.legend + '">' + (g.entry.legendary ? 'legendary' : 'not legendary') + '</span>',
+    ].join('');
+
+    return '<div class="grow' + (solved ? ' solved' : '') + '">' +
+      '<div class="ghead"><span class="nm">' + esc(g.entry.name) + '</span>' +
+        '<span class="dex">#' + g.entry.num + ' ' + arrow + '</span></div>' +
+      '<div class="fchips">' + chips + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function submitGuess(raw){
+  const p = me();
+  if(p.solved || p.guesses.length >= MAX_TRIES) return;
+
+  const name = String(raw || '').trim();
+  const err = document.getElementById('err');
+  if(!name){ err.textContent = 'Type a name first.'; return; }
+
+  const e = DEX.findByName(name);
+  if(!e){ err.textContent = '"' + name + '" is not a species name.'; return; }
+  if(e.num > maxDex()){ err.textContent = e.name + ' is outside the chosen range.'; return; }
+  if(p.guesses.some(g => g.entry.num === e.num)){
+    err.textContent = 'You already guessed ' + e.name + '.'; return;
+  }
+
+  err.textContent = '';
+  p.guesses.push({entry: e, fb: feedback(e, state.secret)});
+  document.getElementById('guess').value = '';
+
+  if(e.num === state.secret.num){
+    p.solved = true;
+    p.used = p.guesses.length;
+    renderRows();
+    setTimeout(endTurn, 700);
+    return;
+  }
+
+  if(p.guesses.length >= MAX_TRIES){
+    p.used = null;                       // did not solve
+    renderRows();
+    setTimeout(endTurn, 700);
+    return;
+  }
+
+  renderRows();
+}
+
+function endTurn(){
+  if(state.turn < state.players.length - 1){
+    state.turn++;
+    beginTurn();
+  } else {
+    finish();
+  }
+}
+
+/* ---------- autocomplete ---------- */
+
+(function(){
+  const input = document.getElementById('guess');
+  const sugg  = document.getElementById('sugg');
+
+  input.addEventListener('input', () => {
+    document.getElementById('err').textContent = '';
+    const val = input.value.trim().toLowerCase();
+    if(!val){ sugg.style.display = 'none'; return; }
+
+    const list = DEX.names(maxDex());
+    const starts = list.filter(n => n.toLowerCase().startsWith(val)).slice(0, 8);
+    const rest = starts.length < 8
+      ? list.filter(n => !n.toLowerCase().startsWith(val) && n.toLowerCase().indexOf(val) !== -1)
+             .slice(0, 8 - starts.length)
+      : [];
+    const all = starts.concat(rest);
+
+    if(!all.length){
+      sugg.innerHTML = '<div class="none">No matching name</div>';
+      sugg.style.display = 'block';
+      return;
+    }
+    sugg.innerHTML = all.map(n =>
+      '<div data-name="' + escAttr(n) + '">' + esc(n) + '</div>').join('');
+    sugg.style.display = 'block';
+  });
+
+  sugg.addEventListener('mousedown', (e) => {
+    const t = e.target.closest('div[data-name]');
+    if(!t) return;
+    sugg.style.display = 'none';
+    submitGuess(t.getAttribute('data-name'));
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ sugg.style.display = 'none'; submitGuess(input.value); }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { sugg.style.display = 'none'; }, 120);
+  });
+})();
+
+/* ==================== result ==================== */
+
+function finish(){
+  const solved = state.players.filter(p => p.solved);
+  const solo = state.players.length === 1;
+
+  const head = document.getElementById('resHead');
+  if(solo){
+    const p = state.players[0];
+    head.textContent = p.solved ? 'Got it.' : 'Out of guesses.';
+    head.className = 'head ' + (p.solved ? 'win' : 'lose');
+    document.getElementById('resSub').textContent = p.solved
+      ? 'Solved in ' + p.used + ' guess' + (p.used === 1 ? '' : 'es') + '.'
+      : 'Eight guesses, no luck.';
+  } else {
+    const best = solved.length ? Math.min.apply(null, solved.map(p => p.used)) : null;
+    const champs = solved.filter(p => p.used === best);
+    head.textContent = champs.length
+      ? (champs.length === 1 ? champs[0].name + ' wins' : champs.map(c => c.name).join(' & ') + ' tie')
+      : 'Nobody got it';
+    head.className = 'head ' + (champs.length ? 'win' : 'lose');
+    document.getElementById('resSub').textContent = champs.length
+      ? 'In ' + best + ' guess' + (best === 1 ? '' : 'es') + '.'
+      : 'The dex wins this one.';
+  }
+
+  const s = state.secret;
+  document.getElementById('answerCard').innerHTML =
+    '<div class="nm">' + esc(s.name) + '</div>' +
+    '<div class="types">' + s.types.map(t =>
+      '<span class="badge">' + esc(t) + '</span>').join('') + '</div>' +
+    '<div class="meta">#' + s.num + ' · ' + esc(s.colorName) + ' · ' + esc(s.region) +
+      (s.legendary ? ' · legendary' : '') + '</div>';
+
+  const standings = solo ? '' : state.players.slice().sort((a, b) => {
+    if(a.solved !== b.solved) return b.solved - a.solved;
+    return (a.used || 99) - (b.used || 99);
+  }).map(p => {
+    const bestUsed = solved.length ? Math.min.apply(null, solved.map(x => x.used)) : null;
+    return '<div class="strow' + (p.solved && p.used === bestUsed ? ' win' : '') + '">' +
+      '<span class="nm">' + esc(p.name) + '</span>' +
+      '<span class="sc">' + (p.solved ? p.used + ' guess' + (p.used === 1 ? '' : 'es')
+                                      : 'did not solve') + '</span>' +
+    '</div>';
+  }).join('');
+  document.getElementById('standings').innerHTML = standings;
+
+  show('result');
+}
+
+document.getElementById('againBtn').addEventListener('click', deal);
+document.getElementById('backSetupBtn').addEventListener('click', () => {
+  renderSetup(); show('setup');
+});
+document.getElementById('quitBtn').addEventListener('click', () => {
+  renderSetup(); show('setup');
+});
+
+renderSetup();
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>

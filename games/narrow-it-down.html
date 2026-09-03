@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Narrow It Down</title>
+<meta name="description" content="A co-operative Pokémon deduction game. The app picks a secret species and answers your yes/no questions truthfully — narrow it down and name it.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/game.css">
+<style>
+  :root{ --accent:#7A5C3E; --accent-dark:#5E462E; }
+
+  .budget{
+    display:flex; align-items:baseline; gap:10px; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .budget .n{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:30px;
+    letter-spacing:-0.02em;
+  }
+  .budget .n.low{ color:var(--bad); }
+  .budget .lab{ font-size:12.5px; color:var(--ink-soft); }
+  .budget .remain{ font-size:12.5px; color:var(--ink-soft); text-align:right; }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab{
+    padding:8px 13px; border-radius:100px; cursor:pointer; font-size:13px;
+    border:1.5px solid var(--line); background:var(--paper); color:var(--ink);
+    font-family:'Inter',sans-serif; font-weight:500;
+  }
+  .tab:hover{ border-color:var(--ink); }
+  .tab.on{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  .qgrid{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:6px; }
+  .q{
+    padding:9px 13px; border-radius:9px; cursor:pointer; font-size:13.5px;
+    border:1.5px solid var(--line-firm); background:var(--card); color:var(--ink);
+    font-family:'Inter',sans-serif; font-weight:500;
+  }
+  .q:hover:not(:disabled){ border-color:var(--accent); background:rgba(122,92,62,0.06); }
+  .q:disabled{ opacity:.34; cursor:default; text-decoration:line-through; }
+
+  .log{ margin-top:16px; }
+  .log .lab{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.09em;
+    color:var(--ink-soft); margin-bottom:7px;
+  }
+  .qrow{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:8px 0; border-top:1px solid var(--line); font-size:13.5px;
+  }
+  .qrow:first-of-type{ border-top:none; }
+  .ans{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:12.5px;
+    padding:3px 10px; border-radius:100px; flex:none;
+  }
+  .ans.yes{ background:rgba(79,138,91,0.16); color:#39683f; }
+  .ans.no{ background:rgba(194,69,59,0.13); color:#8F2C25; }
+
+  .guessbox{
+    margin-top:16px; padding-top:14px; border-top:2px dashed var(--line-firm);
+  }
+  .err{ font-size:13px; color:var(--bad); margin-top:8px; min-height:17px; font-weight:500; }
+
+  .result .head{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px;
+    text-align:center; margin-bottom:6px; letter-spacing:-0.02em;
+  }
+  .result .head.win{ color:var(--good); }
+  .result .head.lose{ color:var(--bad); }
+  .result .sub{ text-align:center; font-size:13.5px; color:var(--ink-soft); margin-bottom:18px; }
+  .answercard{
+    border:2px solid var(--accent); border-radius:12px; padding:18px;
+    text-align:center; background:rgba(122,92,62,0.06); margin-bottom:16px;
+  }
+  .answercard .nm{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px;
+    letter-spacing:-0.02em; margin-bottom:8px;
+  }
+  .answercard .types{ display:flex; gap:6px; justify-content:center; margin-bottom:8px; }
+  .answercard .meta{ font-size:13px; color:var(--ink-soft); }
+
+  .best{
+    display:flex; gap:12px; margin-bottom:16px;
+  }
+  .bestbox{
+    flex:1; text-align:center; padding:11px 8px; border-radius:10px;
+    background:rgba(33,32,28,0.05); border:1px solid var(--line);
+  }
+  .bestbox .n{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; }
+  .bestbox .l{
+    font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em;
+    color:var(--ink-soft); margin-top:2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Narrow It Down</h1>
+    <div class="tag">everyone against the dex</div>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <div id="setup">
+    <div class="panel">
+      <h2>Everyone plays together</h2>
+      <p class="hint">The app picks a secret species and answers your yes/no questions honestly. You get 20 questions — a wrong guess costs 3. Talk it out and name it.</p>
+
+      <p class="seclabel">Which species can it pick?</p>
+      <div class="countrow" id="poolRow"></div>
+
+      <p class="seclabel">Show how many species still match?</p>
+      <div class="countrow" id="hintRow"></div>
+
+      <button class="accent" id="startBtn">Pick a species</button>
+    </div>
+  </div>
+
+  <!-- ============ PLAY ============ -->
+  <div id="play" style="display:none;">
+    <div class="panel">
+      <div class="budget">
+        <div>
+          <div class="n" id="budgetNum">20</div>
+          <div class="lab">questions left</div>
+        </div>
+        <div class="remain" id="remainNote"></div>
+      </div>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="qgrid" id="qgrid"></div>
+
+      <div class="guessbox">
+        <div class="seclabel">Ready to name it? (a wrong guess costs 3 questions)</div>
+        <div class="ac-wrap">
+          <input class="textin" id="guess" placeholder="Type a species name…" autocomplete="off">
+          <div class="suggestions" id="sugg" style="display:none;"></div>
+        </div>
+        <div class="err" id="err"></div>
+      </div>
+
+      <div class="log" id="logBox" style="display:none;">
+        <div class="lab">What you've asked</div>
+        <div id="logList"></div>
+      </div>
+    </div>
+
+    <button class="ghost" id="quitBtn">Give up / new species</button>
+  </div>
+
+  <!-- ============ RESULT ============ -->
+  <div id="result" style="display:none;">
+    <div class="panel">
+      <div class="result">
+        <div class="head" id="resHead"></div>
+        <div class="sub" id="resSub"></div>
+      </div>
+
+      <div class="answercard" id="answerCard"></div>
+
+      <div class="best">
+        <div class="bestbox"><div class="n" id="statSolved">0</div><div class="l">Solved</div></div>
+        <div class="bestbox"><div class="n" id="statBest">—</div><div class="l">Best</div></div>
+        <div class="bestbox"><div class="n" id="statPlayed">0</div><div class="l">Played</div></div>
+      </div>
+
+      <button class="accent" id="againBtn">New species</button>
+      <button class="secondary" id="backSetupBtn">Change range</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="../data/dex-names.js"></script>
+<script src="../data/dex-entries.js"></script>
+<script src="../shared/dex.js"></script>
+<script>
+const BUDGET = 20;
+const WRONG_GUESS_COST = 3;
+
+const HINTS = [
+  {key:'off', label:'Hidden', note:'harder'},
+  {key:'on',  label:'Shown',  note:'teaching mode'},
+];
+
+let state = {
+  pool: 'early',
+  hint: 'off',
+  secret: null,
+  asked: [],        // {label, answer, test}
+  left: BUDGET,
+  tab: 'type',
+  questions: [],
+  over: false,
+  stats: {played:0, solved:0, best:null},
+};
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+function show(id){
+  ['setup','play','result'].forEach(s => {
+    document.getElementById(s).style.display = (s === id ? 'block' : 'none');
+  });
+  window.scrollTo(0, 0);
+}
+function maxDex(){ return DEX.poolMax(state.pool); }
+function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ==================== question bank ====================
+   Every question is a predicate over a species, so the app can answer it
+   truthfully and also use it to count how many candidates survive.        */
+
+function buildQuestions(){
+  const md = maxDex();
+  const qs = [];
+
+  DEX.allTypes(md).forEach(t => {
+    qs.push({
+      group:'type', id:'t-'+t,
+      label:'Is it ' + cap(t) + '?',
+      test: e => e.types.indexOf(t) !== -1,
+    });
+  });
+
+  const gensInPool = DEX.GENERATIONS.filter(g => g.lo <= md);
+  gensInPool.forEach(g => {
+    qs.push({
+      group:'gen', id:'g-'+g.gen,
+      label:'Is it from ' + g.region + '?',
+      test: e => e.gen === g.gen,
+    });
+  });
+  // Ordering questions are what make this solvable by halving rather than guessing.
+  gensInPool.slice(0, -1).forEach(g => {
+    qs.push({
+      group:'gen', id:'ge-'+g.gen,
+      label:'Gen ' + g.gen + ' or earlier?',
+      test: e => e.gen <= g.gen,
+    });
+  });
+
+  DEX.allColours(md).forEach(c => {
+    qs.push({
+      group:'colour', id:'c-'+c,
+      label:'Is it ' + c + '?',
+      test: e => e.colorName === c,
+    });
+  });
+
+  qs.push({group:'other', id:'o-leg', label:'Legendary or mythical?',
+           test: e => e.legendary});
+  qs.push({group:'other', id:'o-dual', label:'Does it have two types?',
+           test: e => e.types.length === 2});
+  [5, 7, 9].forEach(n => {
+    qs.push({group:'other', id:'o-len'+n,
+             label:'More than ' + n + ' letters?',
+             test: e => e.name.replace(/[^A-Za-z]/g,'').length > n});
+  });
+
+  return qs;
+}
+
+function candidates(){
+  return DEX.all(maxDex()).filter(e =>
+    state.asked.every(a => a.test(e) === a.answer));
+}
+
+/* ==================== setup ==================== */
+
+function renderSetup(){
+  const pr = document.getElementById('poolRow');
+  pr.innerHTML = '';
+  DEX.POOLS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (p.key === state.pool ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(p.label) + '<span class="sub">' + esc(p.note) + '</span>';
+    b.addEventListener('click', () => { state.pool = p.key; renderSetup(); });
+    pr.appendChild(b);
+  });
+
+  const hr = document.getElementById('hintRow');
+  hr.innerHTML = '';
+  HINTS.forEach(h => {
+    const b = document.createElement('button');
+    b.className = 'countbtn' + (h.key === state.hint ? ' on' : '');
+    b.style.fontSize = '13px';
+    b.innerHTML = esc(h.label) + '<span class="sub">' + esc(h.note) + '</span>';
+    b.addEventListener('click', () => { state.hint = h.key; renderSetup(); });
+    hr.appendChild(b);
+  });
+}
+
+function newRound(){
+  state.secret = DEX.random(maxDex());
+  state.questions = buildQuestions();
+  state.asked = [];
+  state.left = BUDGET;
+  state.tab = 'type';
+  state.over = false;
+
+  document.getElementById('guess').value = '';
+  document.getElementById('guess').disabled = false;
+  document.getElementById('err').textContent = '';
+  document.getElementById('logBox').style.display = 'none';
+  renderPlay();
+  show('play');
+}
+
+document.getElementById('startBtn').addEventListener('click', newRound);
+
+/* ==================== play ==================== */
+
+const GROUPS = [
+  {key:'type',   label:'Type'},
+  {key:'gen',    label:'Generation'},
+  {key:'colour', label:'Colour'},
+  {key:'other',  label:'Other'},
+];
+
+function renderPlay(){
+  const bn = document.getElementById('budgetNum');
+  bn.textContent = state.left;
+  bn.classList.toggle('low', state.left <= 5);
+
+  document.getElementById('remainNote').innerHTML = state.hint === 'on'
+    ? '<b>' + candidates().length + '</b> species still match'
+    : '';
+
+  document.getElementById('tabs').innerHTML = GROUPS.map(g =>
+    '<button class="tab' + (g.key === state.tab ? ' on' : '') + '" data-g="' + g.key + '">' +
+      esc(g.label) + '</button>'
+  ).join('');
+  document.querySelectorAll('#tabs .tab').forEach(t => {
+    t.addEventListener('click', () => { state.tab = t.getAttribute('data-g'); renderPlay(); });
+  });
+
+  const askedIds = {};
+  state.asked.forEach(a => { askedIds[a.id] = true; });
+
+  document.getElementById('qgrid').innerHTML = state.questions
+    .filter(q => q.group === state.tab)
+    .map(q => '<button class="q" data-id="' + escAttr(q.id) + '"' +
+              (askedIds[q.id] ? ' disabled' : '') + '>' + esc(q.label) + '</button>')
+    .join('');
+
+  document.querySelectorAll('#qgrid .q').forEach(btn => {
+    btn.addEventListener('click', () => ask(btn.getAttribute('data-id')));
+  });
+
+  renderLog();
+}
+
+function renderLog(){
+  if(!state.asked.length) return;
+  document.getElementById('logBox').style.display = 'block';
+  document.getElementById('logList').innerHTML = state.asked.slice().reverse().map(a =>
+    '<div class="qrow"><span>' + esc(a.label) + '</span>' +
+    '<span class="ans ' + (a.answer ? 'yes' : 'no') + '">' +
+      (a.answer ? 'Yes' : 'No') + '</span></div>'
+  ).join('');
+}
+
+function ask(id){
+  if(state.over || state.left <= 0) return;
+  const q = state.questions.find(x => x.id === id);
+  if(!q) return;
+  if(state.asked.some(a => a.id === id)) return;
+
+  const answer = !!q.test(state.secret);
+  state.asked.push({id:q.id, label:q.label, answer:answer, test:q.test});
+  state.left--;
+
+  if(state.left <= 0){ finish(false, 'ran out of questions'); return; }
+  renderPlay();
+}
+
+function submitGuess(raw){
+  if(state.over) return;
+  const name = String(raw || '').trim();
+  const err = document.getElementById('err');
+  if(!name){ err.textContent = 'Type a name first.'; return; }
+
+  const e = DEX.findByName(name);
+  if(!e){ err.textContent = '"' + name + '" is not a species name.'; return; }
+  if(e.num > maxDex()){ err.textContent = e.name + ' is outside the chosen range.'; return; }
+
+  if(e.num === state.secret.num){ finish(true); return; }
+
+  state.left -= WRONG_GUESS_COST;
+  document.getElementById('guess').value = '';
+  if(state.left <= 0){ finish(false, 'ran out of questions'); return; }
+
+  err.textContent = 'Not ' + e.name + '. That cost ' + WRONG_GUESS_COST + ' questions.';
+  renderPlay();
+}
+
+/* ---------- autocomplete ---------- */
+
+(function(){
+  const input = document.getElementById('guess');
+  const sugg  = document.getElementById('sugg');
+
+  input.addEventListener('input', () => {
+    document.getElementById('err').textContent = '';
+    const val = input.value.trim().toLowerCase();
+    if(!val){ sugg.style.display = 'none'; return; }
+
+    const list = DEX.names(maxDex());
+    const starts = list.filter(n => n.toLowerCase().startsWith(val)).slice(0, 8);
+    const rest = starts.length < 8
+      ? list.filter(n => !n.toLowerCase().startsWith(val) && n.toLowerCase().indexOf(val) !== -1)
+             .slice(0, 8 - starts.length)
+      : [];
+    const all = starts.concat(rest);
+
+    if(!all.length){
+      sugg.innerHTML = '<div class="none">No matching name</div>';
+      sugg.style.display = 'block';
+      return;
+    }
+    sugg.innerHTML = all.map(n =>
+      '<div data-name="' + escAttr(n) + '">' + esc(n) + '</div>').join('');
+    sugg.style.display = 'block';
+  });
+
+  sugg.addEventListener('mousedown', (e) => {
+    const t = e.target.closest('div[data-name]');
+    if(!t) return;
+    sugg.style.display = 'none';
+    input.value = t.getAttribute('data-name');
+    submitGuess(input.value);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ sugg.style.display = 'none'; submitGuess(input.value); }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => { sugg.style.display = 'none'; }, 120);
+  });
+})();
+
+/* ==================== result ==================== */
+
+function finish(won, why){
+  state.over = true;
+  const used = BUDGET - Math.max(0, state.left);
+  const narrowed = candidates().length;
+
+  state.stats.played++;
+  if(won){
+    state.stats.solved++;
+    if(state.stats.best === null || used < state.stats.best) state.stats.best = used;
+  }
+
+  document.getElementById('resHead').textContent = won ? 'Got it.' : 'Not this time.';
+  document.getElementById('resHead').className = 'head ' + (won ? 'win' : 'lose');
+  document.getElementById('resSub').textContent = won
+    ? 'Solved with ' + used + ' question' + (used === 1 ? '' : 's') + ' spent.'
+    : 'You ' + (why || 'gave up') + '. Your questions had it down to ' +
+      narrowed + ' possibilit' + (narrowed === 1 ? 'y' : 'ies') + '.';
+
+  const s = state.secret;
+  document.getElementById('answerCard').innerHTML =
+    '<div class="nm">' + esc(s.name) + '</div>' +
+    '<div class="types">' + s.types.map(t =>
+      '<span class="badge">' + esc(t) + '</span>').join('') + '</div>' +
+    '<div class="meta">#' + s.num + ' · ' + esc(s.colorName) + ' · ' + esc(s.region) +
+      (s.legendary ? ' · legendary' : '') + '</div>';
+
+  document.getElementById('statSolved').textContent = state.stats.solved;
+  document.getElementById('statBest').textContent =
+    state.stats.best === null ? '—' : state.stats.best;
+  document.getElementById('statPlayed').textContent = state.stats.played;
+
+  show('result');
+}
+
+document.getElementById('againBtn').addEventListener('click', newRound);
+document.getElementById('backSetupBtn').addEventListener('click', () => {
+  renderSetup(); show('setup');
+});
+document.getElementById('quitBtn').addEventListener('click', () => {
+  if(!state.over) finish(false, 'gave up');
+});
+
+renderSetup();
+</script>
+<script src="../shared/backlink.js"></script>
+</body>
+</html>
