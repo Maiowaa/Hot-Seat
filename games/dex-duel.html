@@ -373,6 +373,13 @@ function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* "A & B" for two, "A, B & C" for more. */
+function joinNames(list){
+  if(list.length <= 1) return list[0] || '';
+  if(list.length === 2) return list[0] + ' & ' + list[1];
+  return list.slice(0, -1).join(', ') + ' & ' + list[list.length - 1];
+}
+
 document.getElementById('startBtn').addEventListener('click', () => {
   captureNames();
   state.players = [];
@@ -571,13 +578,17 @@ document.getElementById('revealBtn').addEventListener('click', () => {
 
   const best    = Math.min.apply(null, rows.map(r => r.delta));
   const winners = rows.filter(r => r.delta === best);
-  const sole    = winners.length === 1 ? winners[0].player : null;
 
-  if(sole) sole.score++;
+  // Everyone tied for closest scores. Awarding nothing on a tie penalises the
+  // players who guessed best, and the more players there are the worse that
+  // gets — with six on the board, two drawing at the top is a good round for
+  // both of them, not a void one.
+  winners.forEach(w => { w.player.score++; });
 
-  const winnerText = sole
-    ? `${escapeHtml(sole.name)} wins the round!`
-    : `Tie between ${winners.map(w => escapeHtml(w.player.name)).join(' & ')} — no points.`;
+  const names = winners.map(w => escapeHtml(w.player.name));
+  const winnerText = winners.length === 1
+    ? `${names[0]} wins the round!`
+    : `${joinNames(names)} tie on Δ${best} — a point each.`;
 
   const sorted = rows.slice().sort((a, b) => a.delta - b.delta);
 
@@ -602,8 +613,8 @@ document.getElementById('revealBtn').addEventListener('click', () => {
   state.history.unshift({
     round: state.round,
     secretNum, secretName,
-    winner: sole ? sole.name : null,
-    tied: sole ? null : winners.map(w => w.player.name),
+    winners: winners.map(w => w.player.name),
+    delta: best,
   });
 
   renderScores();
@@ -620,7 +631,9 @@ function renderHistory(){
   const list = document.getElementById('historyList');
   box.style.display = 'block';
   list.innerHTML = state.history.map(h => {
-    const w = h.winner ? escapeHtml(h.winner) + ' won' : 'Tie';
+    const w = h.winners.length === 1
+      ? escapeHtml(h.winners[0]) + ' won'
+      : joinNames(h.winners.map(escapeHtml)) + ' tied';
     return '<div class="hrow"><span>R' + h.round + ': #' + h.secretNum + ' ' +
            escapeHtml(h.secretName) + '</span><span>' + w + '</span></div>';
   }).join('');
